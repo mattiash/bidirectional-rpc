@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "sourceMap": false,
+        "strictNullChecks": true,
+        "moduleResolution": "node",
+        "preserveConstEnums": true,
+        "declaration": true
+    },
+    "include": ["*.ts", "examples/*.ts"]
+}
