@@ -48,6 +48,9 @@ export class RPCClient extends EventEmitter {
             this.socket = p1 as net.Socket
         }
 
+        this.socket.on('close', (had_error: boolean) =>
+            this.emit('close', had_error)
+        )
         this.rl = readline.createInterface(this.socket)
         this.rl.on('line', line => this.receive(line))
     }
@@ -57,7 +60,7 @@ export class RPCClient extends EventEmitter {
     }
 
     close() {
-        this.socket.destroy()
+        this.socket.end()
     }
 
     private receive(line: string) {
