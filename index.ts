@@ -7,17 +7,24 @@ export class RPCServer extends EventEmitter {
     constructor() {
         super()
         this.server = new net.Server()
-    }
-
-    listen(port: number, ip: string) {
-        this.server.listen(port, ip)
+        this.server.on('listening', () => this.emit('listening'))
+        this.server.on('close', () => this.emit('close'))
+        this.server.on('error', err => this.emit('error', err))
         this.server.on('connection', (client: net.Socket) =>
             this.newClient(client)
         )
     }
 
+    listen(port: number, ip: string) {
+        this.server.listen(port, ip)
+    }
+
+    close() {
+        this.server.close()
+    }
+
     newClient(socket: net.Socket) {
-        this.emit('client', new RPCClient(socket))
+        this.emit('connection', new RPCClient(socket))
     }
 }
 

@@ -12,5 +12,5 @@
         "preserveConstEnums": true,
         "declaration": true
     },
-    "include": ["*.ts", "examples/*.ts"]
+    "include": ["*.ts", "examples/*.ts", "test/*.ts"]
 }

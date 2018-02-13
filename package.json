@@ -1,16 +1,20 @@
 {
-  "name": "bidirectional-rpc",
-  "version": "1.0.0",
-  "description": "Bidirectional RPC over tcp/tls",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Mattias Holmlund <mattias@holmlund.se>",
-  "license": "ISC",
-  "dependencies": {
-    "@types/node": "^9.4.5",
-    "prettier": "^1.10.2",
-    "typescript": "^2.7.1"
-  }
+    "name": "bidirectional-rpc",
+    "version": "1.0.0",
+    "description": "Bidirectional RPC over tcp/tls",
+    "main": "index.js",
+    "scripts": {
+        "tsc": "tsc",
+        "test": "npm run tsc && multi-tape test/*.js"
+    },
+    "author": "Mattias Holmlund <mattias@holmlund.se>",
+    "license": "ISC",
+    "dependencies": {},
+    "devDependencies": {
+        "@types/node": "^9.4.5",
+        "multi-tape": "^1.1.1",
+        "prettier": "^1.10.2",
+        "purple-tape": "^2.0.1",
+        "typescript": "^2.7.1"
+    }
 }
