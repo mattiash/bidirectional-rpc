@@ -15,6 +15,10 @@ export class RPCServer extends EventEmitter {
         )
     }
 
+    address() {
+        return this.server.address()
+    }
+
     listen(port: number, ip: string) {
         this.server.listen(port, ip)
     }
@@ -39,6 +43,7 @@ export class RPCClient extends EventEmitter {
         if (typeof p1 === 'number' && typeof p2 === 'string') {
             this.socket = new net.Socket()
             this.socket.connect(p1, p2)
+            this.socket.on('connect', () => this.emit('connect'))
         } else {
             this.socket = p1 as net.Socket
         }
@@ -49,6 +54,10 @@ export class RPCClient extends EventEmitter {
 
     sendMessage(message: any) {
         this.socket.write(JSON.stringify({ t: 'msg', d: message }) + '\n')
+    }
+
+    close() {
+        this.socket.destroy()
     }
 
     private receive(line: string) {
