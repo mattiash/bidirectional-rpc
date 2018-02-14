@@ -1,5 +1,7 @@
 # Bidirectional RPC
 
+[![Build Status](https://travis-ci.org/mattiash/bidirectional-rpc.svg?branch=master)](https://travis-ci.org/mattiash/bidirectional-rpc) [![Coverage Status](https://coveralls.io/repos/github/mattiash/bidirectional-rpc/badge.svg?branch=master)](https://coveralls.io/github/mattiash/bidirectional-rpc?branch=master)
+
 This module implements an RPC mechanism that meets the following requirements:
 
 1. Initialized from one end-point (client) to the other (server).
