@@ -6,7 +6,7 @@
     "scripts": {
         "tsc": "tsc",
         "test": "tsc && nyc multi-tape -o -p 4 test/*.js",
-        "travis-test": "tsc && nyc --reporter lcov multi-tape -o -p 4 test/*.js"
+        "test-travis": "tsc && nyc --reporter lcov multi-tape -o -p 4 test/*.js"
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
