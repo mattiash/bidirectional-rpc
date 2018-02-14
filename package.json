@@ -5,14 +5,17 @@
     "main": "index.js",
     "scripts": {
         "tsc": "tsc",
-        "test": "npm run tsc && multi-tape test/*.js"
+        "test": "tsc && nyc multi-tape -o -p 4 test/*.js",
+        "travis-test": "tsc && nyc --reporter lcov multi-tape -o -p 4 test/*.js"
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
     "dependencies": {},
     "devDependencies": {
         "@types/node": "^9.4.5",
+        "coveralls": "^3.0.0",
         "multi-tape": "^1.1.1",
+        "nyc": "^11.4.1",
         "prettier": "^1.10.2",
         "purple-tape": "^2.0.1",
         "typescript": "^2.7.1"
