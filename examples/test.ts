@@ -2,7 +2,7 @@ import * as rpc from '../index'
 
 let server = new rpc.RPCServer()
 server.listen(12345, '127.0.0.1')
-server.on('client', (client: rpc.RPCClient) => {
+server.on('connection', (client: rpc.RPCClient) => {
     client.on('message', data => {
         console.log('Server received', data)
         client.sendMessage({ test: 'back' })

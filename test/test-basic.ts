@@ -1,9 +1,9 @@
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 
-class Deferred<T> {
-    promise: Promise<T>
-    resolve: (arg: T) => void
+class Deferred {
+    promise: Promise<void>
+    resolve: () => void
     reject: (reason: any) => void
 
     constructor() {
@@ -162,12 +162,9 @@ test('slow responses shall not block other responses', async function(t) {
     t.pass('listening')
     server.on('connection', serverClient => {
         console.log('connection')
-        serverClient.on(
-            'ask',
-            (message: any, respond: (message: any) => void) => {
-                setTimeout(() => respond(message.d + ' response'), message.t)
-            }
-        )
+        serverClient.on('ask', (message, respond) => {
+            setTimeout(() => respond(message.d + ' response'), message.t)
+        })
     })
     let address = server.address()
     let client = new rpc.RPCClient(address.port, address.address)

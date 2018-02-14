@@ -15,6 +15,14 @@ export class RPCServer extends EventEmitter {
         )
     }
 
+    on(event: 'listening', listener: () => void): this
+    on(event: 'close', listener: () => void): this
+    on(event: 'error', listener: (error: Error) => void): this
+    on(event: 'connection', listener: (client: RPCClient) => void): this
+    on(event: string, listener: (...args: any[]) => void) {
+        return super.on(event, listener)
+    }
+
     address() {
         return this.server.address()
     }
@@ -49,6 +57,8 @@ type Question = {
     timer: NodeJS.Timer
 }
 
+export type ResponderFunction = (response: any) => void
+
 export class RPCClient extends EventEmitter {
     private socket: net.Socket
     private rl: readline.ReadLine
@@ -74,12 +84,29 @@ export class RPCClient extends EventEmitter {
         this.rl.on('line', line => this.receive(line))
     }
 
+    on(event: 'connect', listener: () => void): this
+    on(event: 'close', listener: (had_error: boolean) => void): this
+    on(event: 'error', listener: (errorMessage: string) => void): this
+    on(event: 'message', listener: (message: any) => void): this
+    on(
+        event: 'ask',
+        listener: (message: any, responder: ResponderFunction) => void
+    ): this
+    on(event: string, listener: (...args: any[]) => void) {
+        return super.on(event, listener)
+    }
+
     outstandingQuestions(): number {
         return this.outstandingQuestionMap.size
     }
 
     sendMessage(message: any) {
-        this.socket.write(JSON.stringify({ t: 'msg', d: message }) + '\n')
+        this.socket.write(
+            JSON.stringify({
+                t: 'msg',
+                d: message
+            }) + '\n'
+        )
     }
 
     ask(message: any, timeout: number = 2000): Promise<any> {
@@ -90,12 +117,24 @@ export class RPCClient extends EventEmitter {
             deferred.reject('timeout'), timeout
         }, 2000)
         this.outstandingQuestionMap.set(id, { deferred, timer })
-        this.socket.write(JSON.stringify({ t: 'ask', d: message, id }) + '\n')
+        this.socket.write(
+            JSON.stringify({
+                t: 'ask',
+                d: message,
+                id
+            }) + '\n'
+        )
         return deferred.promise
     }
 
     private respond(id: number, message: any) {
-        this.socket.write(JSON.stringify({ t: 'resp', id, d: message }) + '\n')
+        this.socket.write(
+            JSON.stringify({
+                t: 'resp',
+                id,
+                d: message
+            }) + '\n'
+        )
     }
 
     close() {
