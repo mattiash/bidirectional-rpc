@@ -31,10 +31,29 @@ export class RPCServer extends EventEmitter {
         this.emit('connection', new RPCClient(socket))
     }
 }
+class Deferred<T> {
+    promise: Promise<T>
+    resolve: (arg: T) => void
+    reject: (reason: any) => void
+
+    constructor() {
+        this.promise = new Promise((resolve, reject) => {
+            this.resolve = resolve
+            this.reject = reject
+        })
+    }
+}
+
+type Question = {
+    deferred: Deferred<any>
+    timer: NodeJS.Timer
+}
 
 export class RPCClient extends EventEmitter {
     private socket: net.Socket
     private rl: readline.ReadLine
+    private msgId = 0
+    private outstandingQuestionMap: Map<number, Question> = new Map()
 
     constructor(port: number, ip: string)
     constructor(socket: net.Socket)
@@ -55,8 +74,28 @@ export class RPCClient extends EventEmitter {
         this.rl.on('line', line => this.receive(line))
     }
 
+    outstandingQuestions(): number {
+        return this.outstandingQuestionMap.size
+    }
+
     sendMessage(message: any) {
         this.socket.write(JSON.stringify({ t: 'msg', d: message }) + '\n')
+    }
+
+    ask(message: any, timeout: number = 2000): Promise<any> {
+        let deferred = new Deferred()
+        let id = this.msgId++
+        let timer = global.setTimeout(() => {
+            this.outstandingQuestionMap.delete(id)
+            deferred.reject('timeout'), timeout
+        }, 2000)
+        this.outstandingQuestionMap.set(id, { deferred, timer })
+        this.socket.write(JSON.stringify({ t: 'ask', d: message, id }) + '\n')
+        return deferred.promise
+    }
+
+    private respond(id: number, message: any) {
+        this.socket.write(JSON.stringify({ t: 'resp', id, d: message }) + '\n')
     }
 
     close() {
@@ -68,6 +107,24 @@ export class RPCClient extends EventEmitter {
         switch (data.t) {
             case 'msg':
                 this.emit('message', data.d)
+                break
+            case 'ask':
+                this.emit('ask', data.d, (message: any) =>
+                    this.respond(data.id, message)
+                )
+                break
+            case 'resp':
+                let question = this.outstandingQuestionMap.get(data.id)
+                if (!question) {
+                    this.emit(
+                        'error',
+                        'Response received for unknown id ' + data.id
+                    )
+                } else {
+                    question.deferred.resolve(data.d)
+                    global.clearTimeout(question.timer)
+                    this.outstandingQuestionMap.delete(data.id)
+                }
                 break
             default:
                 throw `Unexpected data ${data}`
