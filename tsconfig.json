@@ -6,7 +6,7 @@
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "sourceMap": false,
+        "inlineSourceMap": true,
         "strictNullChecks": true,
         "moduleResolution": "node",
         "preserveConstEnums": true,

@@ -10,7 +10,7 @@ server.on('connection', (client: rpc.RPCClient) => {
 })
 
 setTimeout(() => {
-    let client = new rpc.RPCClient(12345, '127.0.0.1')
+    let client = new rpc.RPCClient(12345, '127.0.0.1', 'token')
     client.on('message', data => {
         console.log('Client received', data)
     })

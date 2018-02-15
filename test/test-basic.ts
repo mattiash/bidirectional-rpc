@@ -43,14 +43,15 @@ test('send messages from client to server', async function(t) {
     let serverMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', serverClient => {
+    server.on('connection', (serverClient, token) => {
+        t.equal(token, 'token1', 'shall pass token correctly')
         serverClient.on('message', (message: any) =>
             serverMessages.push(message)
         )
         clients++
     })
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address)
+    let client = new rpc.RPCClient(address.port, address.address, 'token1')
     let connected = new Deferred()
     client.on('connect', connected.resolve)
     await connected.promise
@@ -74,8 +75,9 @@ test('send messages from server to client', async function(t) {
     let clientMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', serverClient => {
-        console.log('connection')
+    server.on('connection', (serverClient, token) => {
+        t.equal(token, 'token2', 'shall pass token correctly')
+
         serverClient.on('message', (message: any) => {
             serverMessages.push(message)
             serverClient.sendMessage(message + ' response')
@@ -86,7 +88,7 @@ test('send messages from server to client', async function(t) {
         clients++
     })
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address)
+    let client = new rpc.RPCClient(address.port, address.address, 'token2')
     client.on('message', (message: any) => clientMessages.push(message))
     let connected = new Deferred()
     client.on('connect', connected.resolve)
@@ -130,7 +132,6 @@ test('ask question and respond', async function(t) {
     let server = await listeningServer()
     t.pass('listening')
     server.on('connection', serverClient => {
-        console.log('connection')
         serverClient.on(
             'ask',
             (message: any, respond: (message: any) => void) => {
@@ -139,7 +140,7 @@ test('ask question and respond', async function(t) {
         )
     })
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address)
+    let client = new rpc.RPCClient(address.port, address.address, 'token3')
     client.on('message', (message: any) => clientMessages.push(message))
     let connected = new Deferred()
     client.on('connect', connected.resolve)
@@ -161,13 +162,12 @@ test('slow responses shall not block other responses', async function(t) {
     let server = await listeningServer()
     t.pass('listening')
     server.on('connection', serverClient => {
-        console.log('connection')
         serverClient.on('ask', (message, respond) => {
             setTimeout(() => respond(message.d + ' response'), message.t)
         })
     })
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address)
+    let client = new rpc.RPCClient(address.port, address.address, 'token4')
     client.on('message', (message: any) => clientMessages.push(message))
     let connected = new Deferred()
     client.on('connect', connected.resolve)

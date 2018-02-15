@@ -15,4 +15,25 @@ This module implements an RPC mechanism that meets the following requirements:
 
 ## Server Example
 
-    let server = new Server(ip, port)
+```javascript
+let server = new RPCServer()
+server.listen(3000, '127.0.0.1')
+
+server.on('listening', () => {
+    let address = server.address()
+    console.log(`Listening on ${address.address}:${address.port}`)
+})
+
+server.on('connection', rpcClient => {
+    rpcClient.on('message', message =>
+        console.log(`Server received ${message}`)
+    )
+})
+```
+
+## Client example
+
+```javascript
+let client = new rpc.RPCClient(3000, '127.0.0.1')
+client.on('connect', () => client.sendMessage('test'))
+```

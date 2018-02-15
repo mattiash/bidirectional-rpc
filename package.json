@@ -10,7 +10,9 @@
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
-    "dependencies": {},
+    "dependencies": {
+        "source-map-support": "^0.5.3"
+    },
     "devDependencies": {
         "@types/node": "^9.4.5",
         "coveralls": "^3.0.0",

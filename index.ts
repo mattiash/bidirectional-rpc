@@ -1,3 +1,4 @@
+import 'source-map-support/register'
 import * as net from 'net'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
@@ -18,7 +19,10 @@ export class RPCServer extends EventEmitter {
     on(event: 'listening', listener: () => void): this
     on(event: 'close', listener: () => void): this
     on(event: 'error', listener: (error: Error) => void): this
-    on(event: 'connection', listener: (client: RPCClient) => void): this
+    on(
+        event: 'connection',
+        listener: (client: RPCClient, token: string) => void
+    ): this
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
     }
@@ -36,7 +40,10 @@ export class RPCServer extends EventEmitter {
     }
 
     newClient(socket: net.Socket) {
-        this.emit('connection', new RPCClient(socket))
+        let client = new RPCClient(socket)
+        client.on('initialized', token => {
+            this.emit('connection', client, token)
+        })
     }
 }
 class Deferred<T> {
@@ -64,15 +71,31 @@ export class RPCClient extends EventEmitter {
     private rl: readline.ReadLine
     private msgId = 0
     private outstandingQuestionMap: Map<number, Question> = new Map()
+    private token: string
+    private initialized = false
 
-    constructor(port: number, ip: string)
+    constructor(port: number, ip: string, token: string, fingerprint?: string)
     constructor(socket: net.Socket)
-    constructor(p1: net.Socket | number, p2?: string) {
+    constructor(
+        p1: net.Socket | number,
+        p2?: string,
+        p3?: string,
+        _p4?: string
+    ) {
         super()
-        if (typeof p1 === 'number' && typeof p2 === 'string') {
+        if (
+            typeof p1 === 'number' &&
+            typeof p2 === 'string' &&
+            typeof p3 === 'string'
+        ) {
             this.socket = new net.Socket()
+            this.token = p3
+            this.initialized = true
             this.socket.connect(p1, p2)
-            this.socket.on('connect', () => this.emit('connect'))
+            this.socket.on('connect', () => {
+                this.sendInit()
+                this.emit('connect')
+            })
         } else {
             this.socket = p1 as net.Socket
         }
@@ -85,6 +108,7 @@ export class RPCClient extends EventEmitter {
     }
 
     on(event: 'connect', listener: () => void): this
+    on(event: 'initialized', listener: (token: string) => void): this
     on(event: 'close', listener: (had_error: boolean) => void): this
     on(event: 'error', listener: (errorMessage: string) => void): this
     on(event: 'message', listener: (message: any) => void): this
@@ -105,6 +129,15 @@ export class RPCClient extends EventEmitter {
             JSON.stringify({
                 t: 'msg',
                 d: message
+            }) + '\n'
+        )
+    }
+
+    sendInit() {
+        this.socket.write(
+            JSON.stringify({
+                t: 'init',
+                d: this.token
             }) + '\n'
         )
     }
@@ -143,30 +176,37 @@ export class RPCClient extends EventEmitter {
 
     private receive(line: string) {
         let data = JSON.parse(line)
-        switch (data.t) {
-            case 'msg':
-                this.emit('message', data.d)
-                break
-            case 'ask':
-                this.emit('ask', data.d, (message: any) =>
-                    this.respond(data.id, message)
-                )
-                break
-            case 'resp':
-                let question = this.outstandingQuestionMap.get(data.id)
-                if (!question) {
-                    this.emit(
-                        'error',
-                        'Response received for unknown id ' + data.id
+        if (!this.initialized) {
+            if (data.t === 'init') {
+                this.initialized = true
+                this.emit('initialized', data.d)
+            }
+        } else {
+            switch (data.t) {
+                case 'msg':
+                    this.emit('message', data.d)
+                    break
+                case 'ask':
+                    this.emit('ask', data.d, (message: any) =>
+                        this.respond(data.id, message)
                     )
-                } else {
-                    question.deferred.resolve(data.d)
-                    global.clearTimeout(question.timer)
-                    this.outstandingQuestionMap.delete(data.id)
-                }
-                break
-            default:
-                throw `Unexpected data ${data}`
+                    break
+                case 'resp':
+                    let question = this.outstandingQuestionMap.get(data.id)
+                    if (!question) {
+                        this.emit(
+                            'error',
+                            'Response received for unknown id ' + data.id
+                        )
+                    } else {
+                        question.deferred.resolve(data.d)
+                        global.clearTimeout(question.timer)
+                        this.outstandingQuestionMap.delete(data.id)
+                    }
+                    break
+                default:
+                    throw `Unexpected data ${data}`
+            }
         }
     }
 }
