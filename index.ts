@@ -146,7 +146,6 @@ export class RPCClient extends EventEmitter {
         let deferred = new Deferred()
         let id = this.msgId++
         let timer = global.setTimeout(() => {
-            this.outstandingQuestionMap.delete(id)
             deferred.reject('timeout'), timeout
         }, 2000)
         this.outstandingQuestionMap.set(id, { deferred, timer })

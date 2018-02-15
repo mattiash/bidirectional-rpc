@@ -202,3 +202,57 @@ test('slow responses shall not block other responses', async function(t) {
     t.pass('closed')
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
 })
+
+test('timeout response', async function(t) {
+    let clientMessages: any[] = []
+    let server = await listeningServer()
+    t.pass('listening')
+    server.on('connection', serverClient => {
+        serverClient.on('ask', (message, respond) => {
+            setTimeout(() => respond(message.d + ' response'), message.t)
+        })
+    })
+    let address = server.address()
+    let client = new rpc.RPCClient(address.port, address.address, 'token4')
+    client.on('message', (message: any) => clientMessages.push(message))
+    let connected = new Deferred()
+    client.on('connect', connected.resolve)
+    let closed = new Deferred()
+    client.on('close', closed.resolve)
+    await connected.promise
+    t.pass('connected')
+    let receivedLast = ''
+    let response1 = ''
+    let response2 = ''
+    await Promise.all([
+        (async () => {
+            response1 = await client
+                .ask({ d: 'test1', t: 3000 }, 200)
+                .catch(() => 'timeout')
+            receivedLast = 'test1'
+        })(),
+        (async () => {
+            response2 = await client.ask({ d: 'test2', t: 0 })
+            receivedLast = 'test2'
+        })()
+    ])
+    t.equal(response1, 'timeout', 'shall receive timeout')
+    t.equal(response2, 'test2 response', 'shall receive response to question')
+    t.equal(
+        receivedLast,
+        'test1',
+        'slow responses shall not block fast responses'
+    )
+
+    await sleep(3000)
+    client.close()
+    await closed.promise
+
+    await closeServer(server)
+    t.pass('closed')
+    t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
+})
+
+function sleep(ms: number): Promise<void> {
+    return new Promise<void>(resolve => setTimeout(resolve, ms))
+}
