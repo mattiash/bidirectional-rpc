@@ -46,11 +46,11 @@ test('send messages from client to server', async function(t) {
     let serverMessages: any[] = []
     let server = await listeningServer()
     let fingerprint = await server.fingerprint()
-    console.log('fingerprint', fingerprint)
     t.ok(fingerprint, 'Server shall have a fingerprint')
     t.pass('listening')
-    server.on('connection', (serverClient, token) => {
+    server.on('connection', (serverClient, token, cb) => {
         t.equal(token, 'token1', 'shall pass token correctly')
+        cb(true)
         serverClient.on('message', (message: any) =>
             serverMessages.push(message)
         )
@@ -90,9 +90,9 @@ test('send messages from server to client', async function(t) {
     let clientMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', (serverClient, token) => {
+    server.on('connection', (serverClient, token, cb) => {
         t.equal(token, 'token2', 'shall pass token correctly')
-
+        cb(true)
         serverClient.on('message', (message: any) => {
             serverMessages.push(message)
             serverClient.sendMessage(message + ' response')
@@ -146,7 +146,8 @@ test('ask question and respond', async function(t) {
     let clientMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', serverClient => {
+    server.on('connection', (serverClient, _token, cb) => {
+        cb(true)
         serverClient.on(
             'ask',
             (message: any, respond: (message: any) => void) => {
@@ -176,7 +177,8 @@ test('slow responses shall not block other responses', async function(t) {
     let clientMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', serverClient => {
+    server.on('connection', (serverClient, _token, cb) => {
+        cb(true)
         serverClient.on('ask', (message, respond) => {
             setTimeout(() => respond(message.d + ' response'), message.t)
         })
@@ -222,7 +224,8 @@ test('timeout response', async function(t) {
     let clientMessages: any[] = []
     let server = await listeningServer()
     t.pass('listening')
-    server.on('connection', serverClient => {
+    server.on('connection', (serverClient, _token, cb) => {
+        cb(true)
         serverClient.on('ask', (message, respond) => {
             setTimeout(() => respond(message.d + ' response'), message.t)
         })
@@ -268,13 +271,14 @@ test('timeout response', async function(t) {
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
 })
 
-test('shall reject certificate with wrong fingerprint', async function(t) {
+test('client shall reject certificate with wrong fingerprint', async function(t) {
     let serverMessages: any[] = []
     let server = await listeningServer()
     let fingerprint = await server.fingerprint()
     t.ok(fingerprint, 'Server shall have a fingerprint')
     t.pass('listening')
-    server.on('connection', (serverClient, token) => {
+    server.on('connection', (serverClient, token, cb) => {
+        cb(true)
         t.equal(token, 'token1', 'shall pass token correctly')
         serverClient.on('message', (message: any) =>
             serverMessages.push(message)
@@ -316,6 +320,56 @@ test('shall reject certificate with wrong fingerprint', async function(t) {
     t.pass('server closed')
 })
 
+test('server shall reject client with wrong token', async function(t) {
+    let serverMessages: any[] = []
+    let server = await listeningServer()
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+    t.pass('listening')
+    server.on(
+        'connection',
+        (serverClient, token, cb: (accept: boolean) => void) => {
+            cb(token === 'token1')
+            serverClient.on('message', (message: any) =>
+                serverMessages.push(message)
+            )
+        }
+    )
+    let address = server.address()
+    let client1 = new rpc.RPCClient(
+        address.port,
+        address.address,
+        'token2',
+        fingerprint
+    )
+    let connected1 = new Deferred()
+    let closed1 = new Deferred()
+    let error = new Deferred()
+
+    client1.on('connect', connected1.resolve)
+    client1.on('close', closed1.resolve)
+    client1.on('error', error.resolve)
+    await error.promise
+    t.pass('connection refused with wrong token')
+
+    let client2 = new rpc.RPCClient(
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+    let connected2 = new Deferred()
+    let closed2 = new Deferred()
+
+    client2.on('connect', connected2.resolve)
+    client2.on('close', closed2.resolve)
+    await connected2.promise
+    t.pass('connection accepted with correct token')
+    client2.close()
+
+    await closeServer(server)
+    t.pass('server closed')
+})
 function sleep(ms: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms))
 }

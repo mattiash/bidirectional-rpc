@@ -4,6 +4,8 @@ import * as tls from 'tls'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import { exec } from 'child_process'
+import * as assert from 'assert'
+
 export class RPCServer extends EventEmitter {
     private server: net.Server
     constructor(key: string, private cert: string) {
@@ -22,7 +24,7 @@ export class RPCServer extends EventEmitter {
     on(event: 'error', listener: (error: Error) => void): this
     on(
         event: 'connection',
-        listener: (client: RPCClient, token: string) => void
+        listener: (client: RPCClient, token: string, cb: (accept: boolean) => void) => void
     ): this
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
@@ -65,7 +67,13 @@ export class RPCServer extends EventEmitter {
     newClient(socket: tls.TLSSocket) {
         let client = new RPCClient(socket)
         client.on('initialized', token => {
-            this.emit('connection', client, token)
+            this.emit('connection', client, token, (accept: boolean) => {
+                if (accept) {
+                    client.accept()
+                } else {
+                    client.deny()
+                }
+            })
         })
     }
 }
@@ -120,24 +128,29 @@ export class RPCClient extends EventEmitter {
                 rejectUnauthorized: false
             })
             this.socket.on('secureConnect', () => {
-                if(this.fingerprint) {
-                    if(this.socket.getPeerCertificate().fingerprint !== this.fingerprint) {
+                if (this.fingerprint) {
+                    if (
+                        this.socket.getPeerCertificate().fingerprint !==
+                        this.fingerprint
+                    ) {
                         this.socket.end()
-                        this.emit('error', 'Wrong certificate presented by server')
+                        this.emit(
+                            'error',
+                            'Wrong certificate presented by server'
+                        )
                         return
                     }
                 }
                 this.sendInit()
-                this.emit('connect')
             })
         } else {
             this.socket = p1 as tls.TLSSocket
         }
 
         this.fingerprint = p4
-        this.socket.on('close', (had_error: boolean) =>
+        this.socket.on('close', (had_error: boolean) => {
             this.emit('close', had_error)
-        )
+        })
         this.rl = readline.createInterface({
             input: this.socket,
             output: this.socket
@@ -162,22 +175,21 @@ export class RPCClient extends EventEmitter {
         return this.outstandingQuestionMap.size
     }
 
-    sendMessage(message: any) {
+    send(type: string, data?: any, id?: number) {
         this.socket.write(
             JSON.stringify({
-                t: 'msg',
-                d: message
+                t: type,
+                d: data,
+                id // If id is undefined it is not represented in json
             }) + '\n'
         )
     }
+    sendMessage(message: any) {
+        this.send('msg', message)
+    }
 
     sendInit() {
-        this.socket.write(
-            JSON.stringify({
-                t: 'init',
-                d: this.token
-            }) + '\n'
-        )
+        this.send('init', this.token)
     }
 
     ask(message: any, timeout: number = 2000): Promise<any> {
@@ -187,13 +199,7 @@ export class RPCClient extends EventEmitter {
             deferred.reject('timeout'), timeout
         }, 2000)
         this.outstandingQuestionMap.set(id, { deferred, timer })
-        this.socket.write(
-            JSON.stringify({
-                t: 'ask',
-                d: message,
-                id
-            }) + '\n'
-        )
+        this.send('ask', message, id)
         return deferred.promise
     }
 
@@ -211,15 +217,33 @@ export class RPCClient extends EventEmitter {
         this.socket.end()
     }
 
+    accept() {
+        assert(!this.initialized)
+        this.initialized = true
+        this.send('accepted')
+    }
+
+    deny() {
+        assert(!this.initialized)
+        this.send('denied')
+        this.socket.end()
+    }
+
     private receive(line: string) {
         let data = JSON.parse(line)
         if (!this.initialized) {
             if (data.t === 'init') {
-                this.initialized = true
                 this.emit('initialized', data.d)
             }
         } else {
             switch (data.t) {
+                case 'accepted':
+                    this.emit('connect')
+                    break
+                case 'denied':
+                    this.emit('error', 'connection not accepted')
+                    this.socket.end()
+                    break
                 case 'msg':
                     this.emit('message', data.d)
                     break
