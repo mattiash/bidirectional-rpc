@@ -1,6 +1,8 @@
 import * as rpc from '../index'
-
-let server = new rpc.RPCServer()
+import * as fs from 'fs'
+const cert = fs.readFileSync('../test/server-cert.pem').toString()
+const key = fs.readFileSync('../test/server-key.pem').toString()
+const server = new rpc.RPCServer(key, cert)
 server.listen(12345, '127.0.0.1')
 server.on('connection', (client: rpc.RPCClient) => {
     client.on('message', data => {

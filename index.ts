@@ -1,19 +1,20 @@
 import 'source-map-support/register'
 import * as net from 'net'
+import * as tls from 'tls'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
 
 export class RPCServer extends EventEmitter {
     private server: net.Server
-    constructor() {
+    constructor(key: string, cert: string) {
         super()
-        this.server = new net.Server()
+        this.server = tls.createServer({ key, cert })
         this.server.on('listening', () => this.emit('listening'))
         this.server.on('close', () => this.emit('close'))
         this.server.on('error', err => this.emit('error', err))
-        this.server.on('connection', (client: net.Socket) =>
+        this.server.on('secureConnection', (client: tls.TLSSocket) => {
             this.newClient(client)
-        )
+        })
     }
 
     on(event: 'listening', listener: () => void): this
@@ -39,7 +40,7 @@ export class RPCServer extends EventEmitter {
         this.server.close()
     }
 
-    newClient(socket: net.Socket) {
+    newClient(socket: tls.TLSSocket) {
         let client = new RPCClient(socket)
         client.on('initialized', token => {
             this.emit('connection', client, token)
@@ -67,7 +68,7 @@ type Question = {
 export type ResponderFunction = (response: any) => void
 
 export class RPCClient extends EventEmitter {
-    private socket: net.Socket
+    private socket: tls.TLSSocket
     private rl: readline.ReadLine
     private msgId = 0
     private outstandingQuestionMap: Map<number, Question> = new Map()
@@ -75,9 +76,9 @@ export class RPCClient extends EventEmitter {
     private initialized = false
 
     constructor(port: number, ip: string, token: string, fingerprint?: string)
-    constructor(socket: net.Socket)
+    constructor(socket: tls.TLSSocket)
     constructor(
-        p1: net.Socket | number,
+        p1: tls.TLSSocket | number,
         p2?: string,
         p3?: string,
         _p4?: string
@@ -88,22 +89,28 @@ export class RPCClient extends EventEmitter {
             typeof p2 === 'string' &&
             typeof p3 === 'string'
         ) {
-            this.socket = new net.Socket()
             this.token = p3
             this.initialized = true
-            this.socket.connect(p1, p2)
-            this.socket.on('connect', () => {
+            this.socket = tls.connect({
+                host: p2,
+                port: p1,
+                rejectUnauthorized: false
+            })
+            this.socket.on('secureConnect', () => {
                 this.sendInit()
                 this.emit('connect')
             })
         } else {
-            this.socket = p1 as net.Socket
+            this.socket = p1 as tls.TLSSocket
         }
 
         this.socket.on('close', (had_error: boolean) =>
             this.emit('close', had_error)
         )
-        this.rl = readline.createInterface(this.socket)
+        this.rl = readline.createInterface({
+            input: this.socket,
+            output: this.socket
+        })
         this.rl.on('line', line => this.receive(line))
     }
 

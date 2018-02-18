@@ -1,6 +1,6 @@
 import * as test from 'purple-tape'
 import * as rpc from '../index'
-
+import { readFileSync } from 'fs'
 class Deferred {
     promise: Promise<void>
     resolve: () => void
@@ -15,7 +15,10 @@ class Deferred {
 }
 
 async function listeningServer(): Promise<rpc.RPCServer> {
-    let server = new rpc.RPCServer()
+    let server = new rpc.RPCServer(
+        readFileSync('./test/server-key.pem').toString(),
+        readFileSync('./test/server-cert.pem').toString()
+    )
     let listening = new Deferred()
     server.on('listening', listening.resolve)
     server.listen(0, '127.0.0.1')
