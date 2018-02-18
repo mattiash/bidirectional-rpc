@@ -45,6 +45,9 @@ test('send messages from client to server', async function(t) {
     let clients = 0
     let serverMessages: any[] = []
     let server = await listeningServer()
+    let fingerprint = await server.fingerprint()
+    console.log('fingerprint', fingerprint)
+    t.ok(fingerprint, 'Server shall have a fingerprint')
     t.pass('listening')
     server.on('connection', (serverClient, token) => {
         t.equal(token, 'token1', 'shall pass token correctly')
@@ -54,15 +57,24 @@ test('send messages from client to server', async function(t) {
         clients++
     })
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token1')
+    let client = new rpc.RPCClient(
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
     let connected = new Deferred()
+    let closed = new Deferred()
     client.on('connect', connected.resolve)
+    client.on('close', closed.resolve)
     await connected.promise
-    t.pass('connected')
+    t.pass('client connected')
     client.sendMessage('test1')
     client.sendMessage('test2')
 
     client.close()
+    await closed.promise
+    t.pass('client closed')
 
     await closeServer(server)
     t.pass('closed')
@@ -252,8 +264,56 @@ test('timeout response', async function(t) {
     await closed.promise
 
     await closeServer(server)
-    t.pass('closed')
+    t.pass('server closed')
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
+})
+
+test('shall reject certificate with wrong fingerprint', async function(t) {
+    let serverMessages: any[] = []
+    let server = await listeningServer()
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+    t.pass('listening')
+    server.on('connection', (serverClient, token) => {
+        t.equal(token, 'token1', 'shall pass token correctly')
+        serverClient.on('message', (message: any) =>
+            serverMessages.push(message)
+        )
+    })
+    let address = server.address()
+    let client1 = new rpc.RPCClient(
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+    let connected1 = new Deferred()
+    let closed1 = new Deferred()
+
+    client1.on('connect', connected1.resolve)
+    client1.on('close', closed1.resolve)
+    await connected1.promise
+    t.pass('connected with correct fingerprint')
+    let client2 = new rpc.RPCClient(
+        address.port,
+        address.address,
+        'token1',
+        'bad'
+    )
+    client1.close()
+    await closed1.promise
+
+    let failed = new Deferred()
+    let closed2 = new Deferred()
+    client2.on('error', failed.resolve)
+    client2.on('close', closed2.resolve)
+    await failed.promise
+    await closed2.promise
+
+    t.pass('failed to connect with wrong fingerprint')
+
+    await closeServer(server)
+    t.pass('server closed')
 })
 
 function sleep(ms: number): Promise<void> {
