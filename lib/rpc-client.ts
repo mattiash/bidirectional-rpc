@@ -16,10 +16,18 @@ export class RPCClient extends EventEmitter {
     private rl: readline.ReadLine
     private msgId = 0
     private outstandingQuestionMap: Map<number, Question> = new Map()
-    private token: string
     private initialized = false
     private fingerprint: string | undefined
 
+    /**
+     * Create an RPCClient and initiate connection to a server.
+     *
+     * @param port TCP port number that the server is listening on
+     * @param ip IP address that the server is listening on
+     * @param token Use this to authenticate to the server
+     * @param fingerprint Only connect to the server
+     *                    if it presents a certificate with this fingerprint
+     */
     constructor(port: number, ip: string, token: string, fingerprint?: string)
     constructor(socket: tls.TLSSocket)
     constructor(
@@ -34,7 +42,7 @@ export class RPCClient extends EventEmitter {
             typeof p2 === 'string' &&
             typeof p3 === 'string'
         ) {
-            this.token = p3
+            const token = p3
             this.initialized = true
             this.socket = tls.connect({
                 host: p2,
@@ -55,7 +63,7 @@ export class RPCClient extends EventEmitter {
                         return
                     }
                 }
-                this.sendInit()
+                this.sendInit(token)
             })
         } else {
             this.socket = p1 as tls.TLSSocket
@@ -72,11 +80,45 @@ export class RPCClient extends EventEmitter {
         this.rl.on('line', line => this.receive(line))
     }
 
+    /**
+     * Successfully connected to server
+     *
+     * @event connect
+     */
     on(event: 'connect', listener: () => void): this
+
+    // Internal event used by RPCServer
     on(event: 'initialized', listener: (token: string) => void): this
+
+    /**
+     * Event emitted when the RPCClient is closed from either side
+     * of the connection or due to an error.
+     *
+     * @param had_error true if an error caused the RPCClient to be closed
+     */
     on(event: 'close', listener: (had_error: boolean) => void): this
+
+    /**
+     * Error
+     *
+     * @param errorMessage
+     */
     on(event: 'error', listener: (errorMessage: string) => void): this
+
+    /**
+     * A message received from the peer.
+     *
+     * @param message
+     */
     on(event: 'message', listener: (message: any) => void): this
+
+    /**
+     * The peer asked a question and expects a response.
+     *
+     * @param message
+     * @param responder A function that shall be called with a response to send
+     *                  to the remote client
+     */
     on(
         event: 'ask',
         listener: (message: any, responder: ResponderFunction) => void
@@ -85,10 +127,23 @@ export class RPCClient extends EventEmitter {
         return super.on(event, listener)
     }
 
+    /**
+     * Send a message to the peer without asking for a response
+     *
+     * @param message
+     */
     sendMessage(message: any) {
         this.send('msg', message)
     }
 
+    /**
+     * Ask the peer a question and expect a response
+     * Returns a promise that resolves with the response or
+     * rejects if no response is received within the timeout.
+     *
+     * @param message
+     * @param timeout
+     */
     ask(message: any, timeout: number = 2000): Promise<any> {
         let deferred = new Deferred()
         let id = this.msgId++
@@ -100,10 +155,19 @@ export class RPCClient extends EventEmitter {
         return deferred.promise
     }
 
+    /**
+     * Number of outstanding questions to the peer
+     *
+     */
     outstandingQuestions(): number {
         return this.outstandingQuestionMap.size
     }
 
+    /**
+     * Close the session. A 'close' event will be emitted in both
+     * the local and the remote RPCClient.
+     *
+     */
     close() {
         this.socket.end()
     }
@@ -130,8 +194,8 @@ export class RPCClient extends EventEmitter {
         )
     }
 
-    private sendInit() {
-        this.send('init', this.token)
+    private sendInit(token: string) {
+        this.send('init', token)
     }
 
     private respond(id: number, message: any) {

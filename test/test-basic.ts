@@ -48,12 +48,15 @@ test('send messages from client to server', async function(t) {
     let fingerprint = await server.fingerprint()
     t.ok(fingerprint, 'Server shall have a fingerprint')
     t.pass('listening')
+    let serverClientClosed = new Deferred()
+
     server.on('connection', (serverClient, token, cb) => {
         t.equal(token, 'token1', 'shall pass token correctly')
         cb(true)
         serverClient.on('message', (message: any) =>
             serverMessages.push(message)
         )
+        serverClient.on('close', serverClientClosed.resolve)
         clients++
     })
     let address = server.address()
@@ -73,6 +76,8 @@ test('send messages from client to server', async function(t) {
     client.sendMessage('test2')
 
     client.close()
+    await serverClientClosed.promise
+    t.pass('serverClient closed')
     await closed.promise
     t.pass('client closed')
 
