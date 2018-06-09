@@ -66,14 +66,14 @@ export class RPCServer extends EventEmitter {
         this.server.close()
     }
 
-    newClient(socket: tls.TLSSocket) {
+    private newClient(socket: tls.TLSSocket) {
         let client = new RPCClient(socket)
         client.on('initialized', token => {
             this.emit('connection', client, token, (accept: boolean) => {
                 if (accept) {
-                    client.accept()
+                    client._accept()
                 } else {
-                    client.deny()
+                    client._deny()
                 }
             })
         })

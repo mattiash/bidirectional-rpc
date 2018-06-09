@@ -85,25 +85,8 @@ export class RPCClient extends EventEmitter {
         return super.on(event, listener)
     }
 
-    outstandingQuestions(): number {
-        return this.outstandingQuestionMap.size
-    }
-
-    send(type: string, data?: any, id?: number) {
-        this.socket.write(
-            JSON.stringify({
-                t: type,
-                d: data,
-                id // If id is undefined it is not represented in json
-            }) + '\n'
-        )
-    }
     sendMessage(message: any) {
         this.send('msg', message)
-    }
-
-    sendInit() {
-        this.send('init', this.token)
     }
 
     ask(message: any, timeout: number = 2000): Promise<any> {
@@ -117,6 +100,40 @@ export class RPCClient extends EventEmitter {
         return deferred.promise
     }
 
+    outstandingQuestions(): number {
+        return this.outstandingQuestionMap.size
+    }
+
+    close() {
+        this.socket.end()
+    }
+
+    _accept() {
+        assert(!this.initialized)
+        this.initialized = true
+        this.send('accepted')
+    }
+
+    _deny() {
+        assert(!this.initialized)
+        this.send('denied')
+        this.socket.end()
+    }
+
+    private send(type: string, data?: any, id?: number) {
+        this.socket.write(
+            JSON.stringify({
+                t: type,
+                d: data,
+                id // If id is undefined it is not represented in json
+            }) + '\n'
+        )
+    }
+
+    private sendInit() {
+        this.send('init', this.token)
+    }
+
     private respond(id: number, message: any) {
         this.socket.write(
             JSON.stringify({
@@ -125,22 +142,6 @@ export class RPCClient extends EventEmitter {
                 d: message
             }) + '\n'
         )
-    }
-
-    close() {
-        this.socket.end()
-    }
-
-    accept() {
-        assert(!this.initialized)
-        this.initialized = true
-        this.send('accepted')
-    }
-
-    deny() {
-        assert(!this.initialized)
-        this.send('denied')
-        this.socket.end()
     }
 
     private receive(line: string) {
