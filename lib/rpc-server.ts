@@ -54,8 +54,8 @@ export class RPCServer extends EventEmitter {
         })
     }
 
-    address() {
-        return this.server.address()
+    address(): net.AddressInfo {
+        return this.server.address() as net.AddressInfo
     }
 
     listen(port: number, ip: string) {
