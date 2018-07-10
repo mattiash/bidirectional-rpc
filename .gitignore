@@ -4,3 +4,4 @@ node_modules
 *.tap
 coverage/
 .nyc_output
+package-lock.json
