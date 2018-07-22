@@ -1,3 +1,4 @@
+import 'source-map-support/register'
 import * as rpc from '../index'
 
 let token = process.argv[2]

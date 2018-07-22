@@ -1,3 +1,5 @@
+import 'source-map-support/register'
+
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'

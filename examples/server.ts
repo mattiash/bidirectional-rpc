@@ -1,3 +1,4 @@
+import 'source-map-support/register'
 import * as rpc from '../index'
 import * as fs from 'fs'
 const cert = fs.readFileSync('../test/server-cert.pem').toString()
