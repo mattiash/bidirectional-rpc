@@ -10,7 +10,9 @@
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
-    "dependencies": {},
+    "dependencies": {
+        "rxjs": "^6.2.2"
+    },
     "devDependencies": {
         "@types/node": "^9.4.5",
         "coveralls": "^3.0.0",

@@ -37,3 +37,19 @@ server.on('connection', rpcClient => {
 let client = new rpc.RPCClient(3000, '127.0.0.1')
 client.on('connect', () => client.sendMessage('test'))
 ```
+
+## Observables via bidirectional RPC
+
+Request observable
+
+```javascript
+let observable = client.observable(params)
+observable.subscribe(...)
+// Will emit an error if other end refuses the observable
+```
+
+```javascript
+client.observableRequest(params => {
+    return Observable.from([1, 2, 3])
+})
+```
