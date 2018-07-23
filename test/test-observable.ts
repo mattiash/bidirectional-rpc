@@ -4,7 +4,7 @@ import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { from } from 'rxjs'
-import { toArray } from 'rxjs/operators'
+import { toArray, take } from 'rxjs/operators'
 
 from([1, 2, 3])
     .pipe(toArray())
@@ -71,12 +71,21 @@ test('observable emits value in client', async function(t) {
     await connected.promise
     t.pass('client connected')
     let obs = client.requestObservable('test1')
-    if (obs) {
-        let result = await obs.pipe(toArray()).toPromise()
-        t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
-    } else {
-        t.fail('obs was undefined')
-    }
+    let result = await obs.pipe(toArray()).toPromise()
+    t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
+
+    let obs2 = client.requestObservable('test1')
+    let result2 = await obs2
+        .pipe(
+            take(2),
+            toArray()
+        )
+        .toPromise()
+    t.deepEqual(
+        result2,
+        [1, 2],
+        'shall emit correct values when subscriber does not want all values'
+    )
 
     client.close()
     await serverClientClosed.promise

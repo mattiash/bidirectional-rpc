@@ -3,7 +3,7 @@ import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import * as assert from 'assert'
 import { Deferred } from './deferred'
-import { Observable, Observer, from } from '../node_modules/rxjs'
+import { Observable, Observer, from, Subscription } from '../node_modules/rxjs'
 
 type Question = {
     deferred: Deferred<any>
@@ -21,6 +21,7 @@ export class RPCClient extends EventEmitter {
     private msgId = 0
     private observableId = 0
     private observers = new Map<number, Observer<any>>()
+    private subscriptions = new Map<number, Subscription>()
     private outstandingQuestionMap: Map<number, Question> = new Map()
     private initialized = false
     private fingerprint: string | undefined
@@ -191,7 +192,11 @@ export class RPCClient extends EventEmitter {
             this.observers.set(observableId, observer)
             this.send('subscribeObservable', message, observableId)
             return () => {
-                //                this.send('cancelObservable', {}, observableId)
+                if (this.observers.has(observableId)) {
+                    // The observer no longer wants to receive more values
+                    this.observers.delete(observableId)
+                    this.send('cancelObservable', {}, observableId)
+                }
             }
         })
     }
@@ -301,8 +306,8 @@ export class RPCClient extends EventEmitter {
                         let observableId = data.id
                         let observer = this.observers.get(observableId)
                         if (observer) {
-                            observer.complete()
                             this.observers.delete(observableId)
+                            observer.complete()
                         }
                     }
                     break
@@ -311,7 +316,7 @@ export class RPCClient extends EventEmitter {
                     {
                         // The peer wants to subscribe to an observable
                         let peerObservableId = data.id
-                        from([1, 2, 3]).subscribe(
+                        let subscription = from([1, 2, 3]).subscribe(
                             value => this.send('obs', value, peerObservableId),
                             undefined,
                             () =>
@@ -321,10 +326,26 @@ export class RPCClient extends EventEmitter {
                                     peerObservableId
                                 )
                         )
+                        this.subscriptions.set(peerObservableId, subscription)
                     }
                     break
 
                 case 'cancelObservable':
+                    {
+                        // The peer wants to cancel a subscription
+                        let peerObservableId = data.id
+                        let subscription = this.subscriptions.get(
+                            peerObservableId
+                        )
+                        if (subscription) {
+                            this.subscriptions.delete(peerObservableId)
+                            subscription.unsubscribe()
+                        } else {
+                            throw 'No subscription for ' + peerObservableId
+                        }
+                    }
+                    break
+
                 default:
                     throw `Unexpected data ${data.t}`
             }
