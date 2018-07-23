@@ -182,6 +182,40 @@ test('observable completes and subscriber unsubscribes at same time', async func
     await teardown(t, s)
 })
 
+test('client closes connection', async function(t) {
+    let emitted = new Deferred()
+    let completed = new Deferred()
+
+    let s = await setup(t)
+    let obs = s.client.requestObservable('123')
+    t.equal(s.client._observers(), 0, 'No observers yet')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    obs.subscribe(
+        _value => {
+            s.client.close()
+            emitted.resolve()
+        },
+        undefined,
+        () => completed.resolve()
+    )
+    t.equal(s.client._observers(), 1, 'Observer created')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    await s.serverObservableCreated.promise
+    await emitted.promise
+    await completed.promise
+    t.pass('observable completed')
+
+    t.equal(s.client._observers(), 0, 'No observers anymore')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
+    await s.serverClientClosed.promise
+    t.pass('serverClient closed')
+    await s.closed.promise
+    t.pass('client closed')
+
+    await closeServer(s.server)
+    t.pass('closed')
+})
+
 function sleep(ms: number) {
     return new Promise(resolve => {
         setTimeout(resolve, ms)

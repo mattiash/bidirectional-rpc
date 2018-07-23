@@ -17,6 +17,7 @@ export type ObservableResponderFunction = (
 
 export class RPCClient extends EventEmitter {
     private socket: tls.TLSSocket
+    private closed = false
     private rl: readline.ReadLine
     private msgId = 0
     private observableId = 0
@@ -84,6 +85,13 @@ export class RPCClient extends EventEmitter {
 
         this.fingerprint = p4
         this.socket.on('close', (had_error: boolean) => {
+            this.closed = true
+            this.subscriptions.forEach(subscription =>
+                subscription.unsubscribe()
+            )
+            this.subscriptions = new Map()
+            this.observers.forEach(observer => observer.complete())
+            this.observers = new Map()
             this.emit('close', had_error)
         })
         this.rl = readline.createInterface({
@@ -198,10 +206,14 @@ export class RPCClient extends EventEmitter {
             this.observers.set(observableId, observer)
             this.send('subscribeObservable', message, observableId)
             return () => {
-                if (this.observers.has(observableId)) {
-                    // The observer no longer wants to receive more values
-                    this.observers.delete(observableId)
-                    this.send('cancelObservable', {}, observableId)
+                if (!this.closed) {
+                    // If the socket is closed, the observer will be deleted
+                    // in the on('close') and we cannot send messages.
+                    if (this.observers.has(observableId)) {
+                        // The observer no longer wants to receive more values
+                        this.observers.delete(observableId)
+                        this.send('cancelObservable', {}, observableId)
+                    }
                 }
             }
         })
@@ -357,14 +369,16 @@ export class RPCClient extends EventEmitter {
                                         ),
                                     undefined,
                                     () => {
-                                        this.send(
-                                            'obsComplete',
-                                            undefined,
-                                            peerObservableId
-                                        )
-                                        this.subscriptions.delete(
-                                            peerObservableId
-                                        )
+                                        if (!this.closed) {
+                                            this.send(
+                                                'obsComplete',
+                                                undefined,
+                                                peerObservableId
+                                            )
+                                            this.subscriptions.delete(
+                                                peerObservableId
+                                            )
+                                        }
                                     }
                                 )
                                 this.subscriptions.set(
