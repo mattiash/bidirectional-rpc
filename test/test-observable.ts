@@ -70,10 +70,10 @@ test('observable emits value in client', async function(t) {
     client.on('close', closed.resolve)
     await connected.promise
     t.pass('client connected')
-    let obs = await client.requestObservable('test1')
+    let obs = client.requestObservable('test1')
     if (obs) {
         let result = await obs.pipe(toArray()).toPromise()
-        t.deepEqual(result, [1, 2, 3])
+        t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
     } else {
         t.fail('obs was undefined')
     }

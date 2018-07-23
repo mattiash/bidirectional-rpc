@@ -3,7 +3,7 @@ import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import * as assert from 'assert'
 import { Deferred } from './deferred'
-import { Observable, from } from '../node_modules/rxjs'
+import { Observable, Observer, from } from '../node_modules/rxjs'
 
 type Question = {
     deferred: Deferred<any>
@@ -11,11 +11,16 @@ type Question = {
 }
 
 export type ResponderFunction = (response: any) => void
+export type ObservableResponderFunction = (
+    resp: Observable<any> | undefined
+) => void
 
 export class RPCClient extends EventEmitter {
     private socket: tls.TLSSocket
     private rl: readline.ReadLine
     private msgId = 0
+    private observableId = 0
+    private observers = new Map<number, Observer<any>>()
     private outstandingQuestionMap: Map<number, Question> = new Map()
     private initialized = false
     private fingerprint: string | undefined
@@ -129,11 +134,12 @@ export class RPCClient extends EventEmitter {
      * The peer wants an observable
      *
      * @param message A description of the observable that the peer wants
-     *
+     * @param responder A function that shall be called with an observable
+     *                  that emits values to send to the peer.
      */
     on(
         event: 'requestObservable',
-        listener: (message: any) => Observable<any> | undefined
+        listener: (message: any, responder: ObservableResponderFunction) => void
     ): this
 
     on(event: string, listener: (...args: any[]) => void) {
@@ -168,8 +174,26 @@ export class RPCClient extends EventEmitter {
         return deferred.promise
     }
 
-    requestObservable(_message: any): Promise<Observable<any> | undefined> {
-        return Promise.resolve(from([1, 2, 3]))
+    /**
+     * Request an observable from the peer.
+     *
+     * Note that a cold observable is returned. This means that
+     * no request has actually been sent to the peer. It will
+     * be sent when someone subscribes to the observable.
+     *
+     * @param message
+     */
+    requestObservable(message: any): Observable<any> {
+        message = clone(message)
+
+        return new Observable<any>(observer => {
+            let observableId = this.observableId++
+            this.observers.set(observableId, observer)
+            this.send('subscribeObservable', message, observableId)
+            return () => {
+                //                this.send('cancelObservable', {}, observableId)
+            }
+        })
     }
 
     /**
@@ -261,9 +285,53 @@ export class RPCClient extends EventEmitter {
                         this.outstandingQuestionMap.delete(data.id)
                     }
                     break
+                case 'obs': // Data for an observable from peer
+                    {
+                        let observableId = data.id
+                        let value = data.d
+                        let observer = this.observers.get(observableId)
+                        if (observer) {
+                            observer.next(value)
+                        }
+                    }
+                    break
+
+                case 'obsComplete': // An observable completed on the peer
+                    {
+                        let observableId = data.id
+                        let observer = this.observers.get(observableId)
+                        if (observer) {
+                            observer.complete()
+                            this.observers.delete(observableId)
+                        }
+                    }
+                    break
+
+                case 'subscribeObservable':
+                    {
+                        // The peer wants to subscribe to an observable
+                        let peerObservableId = data.id
+                        from([1, 2, 3]).subscribe(
+                            value => this.send('obs', value, peerObservableId),
+                            undefined,
+                            () =>
+                                this.send(
+                                    'obsComplete',
+                                    undefined,
+                                    peerObservableId
+                                )
+                        )
+                    }
+                    break
+
+                case 'cancelObservable':
                 default:
-                    throw `Unexpected data ${data}`
+                    throw `Unexpected data ${data.t}`
             }
         }
     }
+}
+
+function clone<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj))
 }
