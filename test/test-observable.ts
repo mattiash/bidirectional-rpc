@@ -61,6 +61,14 @@ async function setup(t: test.Test) {
                     )
                     serverObservableCreated.resolve()
                     break
+                case 'infinite':
+                    cb(
+                        interval(100).pipe(
+                            map(n => n + 1)
+                        )
+                    )
+                    serverObservableCreated.resolve()
+                    break
             }
         })
         serverClient.on('close', serverClientClosed.resolve)
@@ -187,7 +195,7 @@ test('client closes connection', async function(t) {
     let completed = new Deferred()
 
     let s = await setup(t)
-    let obs = s.client.requestObservable('123')
+    let obs = s.client.requestObservable('infinite')
     t.equal(s.client._observers(), 0, 'No observers yet')
     t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
     obs.subscribe(
@@ -209,6 +217,41 @@ test('client closes connection', async function(t) {
     t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
     await s.serverClientClosed.promise
     t.pass('serverClient closed')
+    await s.closed.promise
+    t.pass('client closed')
+
+    await closeServer(s.server)
+    t.pass('closed')
+})
+
+test('server closes connection', async function(t) {
+    let emitted = new Deferred()
+    let completed = new Deferred()
+
+    let s = await setup(t)
+    let obs = s.client.requestObservable('infinite')
+    t.equal(s.client._observers(), 0, 'No observers yet')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    obs.subscribe(
+        _value => {
+            s.serverClient.close()
+            emitted.resolve()
+        },
+        undefined,
+        () => completed.resolve()
+    )
+    t.equal(s.client._observers(), 1, 'Observer created')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    await s.serverObservableCreated.promise
+    await emitted.promise
+    await completed.promise
+    t.pass('observable completed')
+
+    await s.serverClientClosed.promise
+    t.pass('serverClient closed')
+
+    t.equal(s.client._observers(), 0, 'No observers anymore')
+    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
     await s.closed.promise
     t.pass('client closed')
 
