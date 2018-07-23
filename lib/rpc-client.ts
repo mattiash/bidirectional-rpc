@@ -3,6 +3,7 @@ import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import * as assert from 'assert'
 import { Deferred } from './deferred'
+import { Observable, from } from '../node_modules/rxjs'
 
 type Question = {
     deferred: Deferred<any>
@@ -123,6 +124,18 @@ export class RPCClient extends EventEmitter {
         event: 'ask',
         listener: (message: any, responder: ResponderFunction) => void
     ): this
+
+    /**
+     * The peer wants an observable
+     *
+     * @param message A description of the observable that the peer wants
+     *
+     */
+    on(
+        event: 'requestObservable',
+        listener: (message: any) => Observable<any> | undefined
+    ): this
+
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
     }
@@ -153,6 +166,10 @@ export class RPCClient extends EventEmitter {
         this.outstandingQuestionMap.set(id, { deferred, timer })
         this.send('ask', message, id)
         return deferred.promise
+    }
+
+    requestObservable(_message: any): Promise<Observable<any> | undefined> {
+        return Promise.resolve(from([1, 2, 3]))
     }
 
     /**

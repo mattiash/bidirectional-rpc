@@ -53,7 +53,7 @@ test('observable emits value in client', async function(t) {
     server.on('connection', (serverClient, token, cb) => {
         t.equal(token, 'token1', 'shall pass token correctly')
         cb(true)
-        serverClient.on('requestObservable', (message: any) => from([1, 2, 3]))
+        serverClient.on('requestObservable', (_message: any) => from([1, 2, 3]))
         serverClient.on('close', serverClientClosed.resolve)
         clients++
     })
@@ -71,8 +71,12 @@ test('observable emits value in client', async function(t) {
     await connected.promise
     t.pass('client connected')
     let obs = await client.requestObservable('test1')
-    let result = await obs.pipe(toArray()).toPromise()
-    t.deepEqual(result, [1, 2, 3])
+    if (obs) {
+        let result = await obs.pipe(toArray()).toPromise()
+        t.deepEqual(result, [1, 2, 3])
+    } else {
+        t.fail('obs was undefined')
+    }
 
     client.close()
     await serverClientClosed.promise
