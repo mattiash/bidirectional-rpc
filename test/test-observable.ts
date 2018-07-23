@@ -3,8 +3,8 @@ import 'source-map-support/register'
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
-import { from } from 'rxjs'
-import { toArray, take } from 'rxjs/operators'
+import { from, interval } from 'rxjs'
+import { toArray, take, map } from 'rxjs/operators'
 
 from([1, 2, 3])
     .pipe(toArray())
@@ -53,7 +53,18 @@ test('observable emits value in client', async function(t) {
     server.on('connection', (serverClient, token, cb) => {
         t.equal(token, 'token1', 'shall pass token correctly')
         cb(true)
-        serverClient.on('requestObservable', (_message: any) => from([1, 2, 3]))
+        serverClient.on('requestObservable', (message: any, cb) => {
+            switch (message) {
+                case '123':
+                    cb(
+                        interval(100).pipe(
+                            take(3),
+                            map(n => n + 1)
+                        )
+                    )
+                    break
+            }
+        })
         serverClient.on('close', serverClientClosed.resolve)
         clients++
     })
@@ -70,17 +81,18 @@ test('observable emits value in client', async function(t) {
     client.on('close', closed.resolve)
     await connected.promise
     t.pass('client connected')
-    let obs = client.requestObservable('test1')
+    let obs = client.requestObservable('123')
     let result = await obs.pipe(toArray()).toPromise()
     t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
 
-    let obs2 = client.requestObservable('test1')
+    let obs2 = client.requestObservable('123')
     let result2 = await obs2
         .pipe(
             take(2),
             toArray()
         )
         .toPromise()
+
     t.deepEqual(
         result2,
         [1, 2],

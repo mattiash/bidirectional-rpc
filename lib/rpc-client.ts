@@ -3,7 +3,7 @@ import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import * as assert from 'assert'
 import { Deferred } from './deferred'
-import { Observable, Observer, from, Subscription } from '../node_modules/rxjs'
+import { Observable, Observer, Subscription } from '../node_modules/rxjs'
 
 type Question = {
     deferred: Deferred<any>
@@ -273,9 +273,16 @@ export class RPCClient extends EventEmitter {
                     this.emit('message', data.d)
                     break
                 case 'ask':
-                    this.emit('ask', data.d, (message: any) =>
-                        this.respond(data.id, message)
-                    )
+                    {
+                        let cbCalled = false
+                        this.emit('ask', data.d, (message: any) => {
+                            if (cbCalled) {
+                                throw new Error('Callback called twice for ask')
+                            }
+                            cbCalled = true
+                            this.respond(data.id, message)
+                        })
+                    }
                     break
                 case 'resp':
                     let question = this.outstandingQuestionMap.get(data.id)
@@ -316,17 +323,38 @@ export class RPCClient extends EventEmitter {
                     {
                         // The peer wants to subscribe to an observable
                         let peerObservableId = data.id
-                        let subscription = from([1, 2, 3]).subscribe(
-                            value => this.send('obs', value, peerObservableId),
-                            undefined,
-                            () =>
-                                this.send(
-                                    'obsComplete',
+                        let cbCalled = false
+                        this.emit(
+                            'requestObservable',
+                            data.d,
+                            (obs: Observable<any>) => {
+                                if (cbCalled) {
+                                    throw new Error(
+                                        'Callback called twice for requestObservable'
+                                    )
+                                }
+                                cbCalled = true
+                                let subscription = obs.subscribe(
+                                    value =>
+                                        this.send(
+                                            'obs',
+                                            value,
+                                            peerObservableId
+                                        ),
                                     undefined,
-                                    peerObservableId
+                                    () =>
+                                        this.send(
+                                            'obsComplete',
+                                            undefined,
+                                            peerObservableId
+                                        )
                                 )
+                                this.subscriptions.set(
+                                    peerObservableId,
+                                    subscription
+                                )
+                            }
                         )
-                        this.subscriptions.set(peerObservableId, subscription)
                     }
                     break
 

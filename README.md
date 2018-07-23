@@ -49,5 +49,5 @@ observable.subscribe(...)
 ```
 
 ```javascript
-client.on('requestObservable', params => Observable.from([1, 2, 3]))
+client.on('requestObservable', (params, cb) => cb(from([1, 2, 3])))
 ```
