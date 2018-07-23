@@ -20,7 +20,13 @@ export class RPCClient extends EventEmitter {
     private rl: readline.ReadLine
     private msgId = 0
     private observableId = 0
+
+    // The local observers in this node that shall get messages emitted
+    // by an observable in the peer.
     private observers = new Map<number, Observer<any>>()
+
+    // The subscriptions to local Observables. Each subscription
+    // forwards any received values to the peer.
     private subscriptions = new Map<number, Subscription>()
     private outstandingQuestionMap: Map<number, Question> = new Map()
     private initialized = false
@@ -230,6 +236,14 @@ export class RPCClient extends EventEmitter {
         this.socket.end()
     }
 
+    _observers() {
+        return this.observers.size
+    }
+
+    _subscriptions() {
+        return this.subscriptions.size
+    }
+
     private send(type: string, data?: any, id?: number) {
         this.socket.write(
             JSON.stringify({
@@ -342,12 +356,16 @@ export class RPCClient extends EventEmitter {
                                             peerObservableId
                                         ),
                                     undefined,
-                                    () =>
+                                    () => {
                                         this.send(
                                             'obsComplete',
                                             undefined,
                                             peerObservableId
                                         )
+                                        this.subscriptions.delete(
+                                            peerObservableId
+                                        )
+                                    }
                                 )
                                 this.subscriptions.set(
                                     peerObservableId,
@@ -369,7 +387,8 @@ export class RPCClient extends EventEmitter {
                             this.subscriptions.delete(peerObservableId)
                             subscription.unsubscribe()
                         } else {
-                            throw 'No subscription for ' + peerObservableId
+                            // The observable was probably unsubscribed and
+                            // completed at the same time
                         }
                     }
                     break
