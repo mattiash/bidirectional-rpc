@@ -383,8 +383,6 @@ export class RPCClientHandler {
     client: RPCClient
 
     initialize(client: RPCClient) {
-        // TODO: Could there be a circular reference which
-        // leads to a leak here?
         this.client = client
     }
 
