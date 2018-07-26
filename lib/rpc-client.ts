@@ -263,6 +263,16 @@ export class RPCClient extends EventEmitter {
         )
     }
 
+    private respondError(id: number, message: any) {
+        this.socket.write(
+            JSON.stringify({
+                t: 'respError',
+                id,
+                d: message
+            }) + '\n'
+        )
+    }
+
     private receive(line: string) {
         let data = JSON.parse(line)
         if (!this.initialized) {
@@ -287,21 +297,38 @@ export class RPCClient extends EventEmitter {
                         .then(response => {
                             this.respond(data.id, response)
                         })
-                        .catch(() => {
-                            // TODO: Handle reject from onQuestion
+                        .catch(response => {
+                            this.respondError(data.id, response)
                         })
                     break
                 case 'resp':
-                    let question = this.outstandingQuestionMap.get(data.id)
-                    if (!question) {
-                        this.emit(
-                            'error',
-                            'Response received for unknown id ' + data.id
-                        )
-                    } else {
-                        question.deferred.resolve(data.d)
-                        global.clearTimeout(question.timer)
-                        this.outstandingQuestionMap.delete(data.id)
+                    {
+                        let question = this.outstandingQuestionMap.get(data.id)
+                        if (!question) {
+                            this.emit(
+                                'error',
+                                'Response received for unknown id ' + data.id
+                            )
+                        } else {
+                            question.deferred.resolve(data.d)
+                            global.clearTimeout(question.timer)
+                            this.outstandingQuestionMap.delete(data.id)
+                        }
+                    }
+                    break
+                case 'respError':
+                    {
+                        let question = this.outstandingQuestionMap.get(data.id)
+                        if (!question) {
+                            this.emit(
+                                'error',
+                                'Response received for unknown id ' + data.id
+                            )
+                        } else {
+                            question.deferred.reject(data.d)
+                            global.clearTimeout(question.timer)
+                            this.outstandingQuestionMap.delete(data.id)
+                        }
                     }
                     break
                 case 'obs': // Data for an observable from peer

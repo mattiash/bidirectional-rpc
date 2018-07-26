@@ -205,6 +205,49 @@ test('ask question and respond', async function(t) {
     t.pass('closed')
 })
 
+test('ask question and reject', async function(t) {
+    let server = await listeningServer()
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    serverClientHandler.onQuestion = (question: any) =>
+        Promise.reject(question + ' response')
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
+    let address = server.address()
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
+    let response = await client.askQuestion('test1').catch(e => 'error ' + e)
+    t.equal(
+        response,
+        'error test1 response',
+        'shall receive rejection to question'
+    )
+    client.close()
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
+
+    await closeServer(server)
+    t.pass('closed')
+})
+
 test('slow responses shall not block other responses', async function(t) {
     let server = await listeningServer()
     t.pass('Listening')
