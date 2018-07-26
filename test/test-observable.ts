@@ -5,21 +5,9 @@ import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { interval } from 'rxjs'
 import { toArray, take, map } from 'rxjs/operators'
-import { RPCClientHandler, RPCClient } from '../lib/rpc-client'
+import { RPCClient } from '../lib/rpc-client'
 import { RPCServer } from '../lib/rpc-server'
-
-class Deferred {
-    promise: Promise<void>
-    resolve: () => void
-    reject: (reason: any) => void
-
-    constructor() {
-        this.promise = new Promise((resolve, reject) => {
-            this.resolve = resolve
-            this.reject = reject
-        })
-    }
-}
+import { Deferred, sleep, RPCTestHandler } from './common'
 
 async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer(
@@ -41,18 +29,7 @@ async function closeServer(server: rpc.RPCServer) {
     await close.promise
 }
 
-class RPCTestClientHandler extends RPCClientHandler {
-    connected = new Deferred()
-    closed = new Deferred()
-    onConnect() {
-        this.connected.resolve()
-    }
-    onClose() {
-        this.closed.resolve()
-    }
-}
-
-class RPCTestServerHandler extends RPCTestClientHandler {
+class RPCTestServerHandler extends RPCTestHandler {
     observableCreated = new Deferred()
     onRequestObservable(params: any) {
         this.observableCreated.resolve()
@@ -76,7 +53,7 @@ async function setup(t: test.Test) {
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
     let address = server.address()
 
-    let clientHandler = new RPCTestClientHandler()
+    let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient(
         clientHandler,
         address.port,
@@ -314,9 +291,3 @@ test('server closes connection', async function(t) {
     await closeServer(s.server)
     t.pass('closed')
 })
-
-function sleep(ms: number) {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms)
-    })
-}
