@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.0.0] - 2018-07-26
+
+### Added
+
+-   Added a possibility to expose observables and subscribe to them
+    via the RPC-mechanism.
+
+### Changed
+
+-   Rewrote the API for interacting with the client. This replaces the events emitted
+    by the client with callbacks on an object that derives from RPCClientHandler.
+    The change was done to make it easier to keep state per client and make sure
+    that callbacks were only fired once.
+
 ## [1.0.1] - 2018-07-10
 
 ### Fixed
 
-* Fix typing problem
+-   Fix typing problem
 
 ## [1.0.0] - 2018-07-10
 
