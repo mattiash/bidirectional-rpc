@@ -2,10 +2,13 @@ import * as net from 'net'
 import * as tls from 'tls'
 import { EventEmitter } from 'events'
 import { exec } from 'child_process'
-import { RPCClient } from './rpc-client'
+import { RPCClient, RPCClientHandler } from './rpc-client'
+import * as uuidv4 from 'uuid/v4'
 
 export class RPCServer extends EventEmitter {
     private server: net.Server
+    private unusedTokens = new Map<string, RPCClientHandler>()
+
     constructor(key: string, private cert: string) {
         super()
         this.server = tls.createServer({ key, cert })
@@ -27,6 +30,10 @@ export class RPCServer extends EventEmitter {
             token: string,
             cb: (accept: boolean) => void
         ) => void
+    ): this
+    on(
+        event: 'invalid_token',
+        listener: (ip: string, token: string) => void
     ): this
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
@@ -66,16 +73,58 @@ export class RPCServer extends EventEmitter {
         this.server.close()
     }
 
+    /**
+     *
+     * Add a token that shall be accepted. When a peer presents
+     * this token, it will be associated with the provided RPCClientHandler.
+     * A token can only be used once. It expires after timeoutMs.
+     * If no token is provided, a random token is generated.
+     * The function returns the token.
+     *
+     * @param clientHandler An instance of RPCClientHandler that provides callbacks
+     *                      for this client
+     * @param timeoutMs     The time that the token is valid. A client must connect within
+     *                      this timeout, otherwise the token expires.
+     * @param token
+     *
+     * @returns The supplied token or the generated random token.
+     *
+     */
+
+    registerClientHandler(
+        clientHandler: RPCClientHandler,
+        timeoutMs: number = 3000,
+        token?: string
+    ): string {
+        if (!token) {
+            token = uuidv4()
+        }
+
+        if (this.unusedTokens.has(token)) {
+            throw new Error(`Token ${token} used twice`)
+        }
+
+        this.unusedTokens.set(token, clientHandler)
+
+        setTimeout(() => {
+            this.unusedTokens.delete(token!)
+        }, timeoutMs).unref()
+
+        return token
+    }
+
     private newClient(socket: tls.TLSSocket) {
         let client = new RPCClient(socket)
         client.on('initialized', token => {
-            this.emit('connection', client, token, (accept: boolean) => {
-                if (accept) {
-                    client._accept()
-                } else {
-                    client._deny()
-                }
-            })
+            let handler = this.unusedTokens.get(token)
+            if (!handler) {
+                this.emit('invalid_token', socket.remoteAddress, token)
+                client._deny()
+            } else {
+                client.setHandler(handler)
+                this.unusedTokens.delete(token)
+                client._accept()
+            }
         })
     }
 }

@@ -3,11 +3,10 @@ import 'source-map-support/register'
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
-import { from, interval } from 'rxjs'
+import { interval } from 'rxjs'
 import { toArray, take, map } from 'rxjs/operators'
-from([1, 2, 3])
-    .pipe(toArray())
-    .toPromise()
+import { RPCClientHandler, RPCClient } from '../lib/rpc-client'
+import { RPCServer } from '../lib/rpc-server'
 
 class Deferred {
     promise: Promise<void>
@@ -29,6 +28,7 @@ async function listeningServer(): Promise<rpc.RPCServer> {
     )
     let listening = new Deferred()
     server.on('listening', listening.resolve)
+    server.on('error', err => console.log('Server error', err))
     server.listen(0, '127.0.0.1')
     await listening.promise
     return server
@@ -41,78 +41,68 @@ async function closeServer(server: rpc.RPCServer) {
     await close.promise
 }
 
+class RPCTestClientHandler extends RPCClientHandler {
+    connected = new Deferred()
+    closed = new Deferred()
+    onConnect() {
+        this.connected.resolve()
+    }
+    onClose() {
+        this.closed.resolve()
+    }
+}
+
+class RPCTestServerHandler extends RPCTestClientHandler {
+    observableCreated = new Deferred()
+    onRequestObservable(params: any) {
+        this.observableCreated.resolve()
+        switch (params) {
+            case '123':
+                return interval(100).pipe(
+                    take(3),
+                    map(n => n + 1)
+                )
+            case 'infinite':
+                return interval(100).pipe(map(n => n + 1))
+        }
+        return undefined
+    }
+}
+
 async function setup(t: test.Test) {
     let server = await listeningServer()
-    let serverClientClosed = new Deferred()
-    let serverObservableCreated = new Deferred()
-    let serverClient!: rpc.RPCClient
 
-    server.on('connection', (_serverClient, _token, cb) => {
-        serverClient = _serverClient
-        cb(true)
-        serverClient.on('requestObservable', (message: any, cb) => {
-            switch (message) {
-                case '123':
-                    cb(
-                        interval(100).pipe(
-                            take(3),
-                            map(n => n + 1)
-                        )
-                    )
-                    serverObservableCreated.resolve()
-                    break
-                case 'infinite':
-                    cb(
-                        interval(100).pipe(
-                            map(n => n + 1)
-                        )
-                    )
-                    serverObservableCreated.resolve()
-                    break
-            }
-        })
-        serverClient.on('close', serverClientClosed.resolve)
-    })
-
+    const serverClientHandler = new RPCTestServerHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token1')
-    let connected = new Deferred()
-    let closed = new Deferred()
-    client.on('connect', connected.resolve)
-    client.on('close', closed.resolve)
 
-    await connected.promise
+    let clientHandler = new RPCTestClientHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1'
+    )
+
+    await clientHandler.connected.promise
     t.pass('client connected')
 
     return {
         client,
-        serverClient,
-        serverObservableCreated,
-        serverClientClosed,
+        clientHandler,
         server,
-        closed,
-        connected
+        serverClientHandler
     }
 }
 
 async function teardown(
     t: test.Test,
     s: {
-        client: rpc.RPCClient
-        serverClient: rpc.RPCClient
-        serverObservableCreated: Deferred
-        serverClientClosed: Deferred
-        server: rpc.RPCServer
-        closed: Deferred
-        connected: Deferred
+        client: RPCClient
+        server: RPCServer
     }
 ) {
     s.client.close()
-    await s.serverClientClosed.promise
-    t.pass('serverClient closed')
-    await s.closed.promise
-    t.pass('client closed')
-
     await closeServer(s.server)
     t.pass('closed')
 }
@@ -121,18 +111,34 @@ test('observable completes', async function(t) {
     let s = await setup(t)
     let obs = s.client.requestObservable('123')
     t.equal(s.client._observers(), 0, 'No observers yet')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     let p = obs.pipe(toArray()).toPromise()
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
-    await s.serverObservableCreated.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
+    await s.serverClientHandler.observableCreated.promise
     await sleep(200)
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 1, 'Subscription created')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        1,
+        'Subscription created'
+    )
     let result = await p
     t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
     t.equal(s.client._observers(), 0, 'No observers anymore')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions anymore'
+    )
     await teardown(t, s)
 })
 
@@ -140,7 +146,11 @@ test('subscriber unsubscribes', async function(t) {
     let s = await setup(t)
     let obs = s.client.requestObservable('123')
     t.equal(s.client._observers(), 0, 'No observers yet')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     let p = obs
         .pipe(
             take(2),
@@ -148,25 +158,40 @@ test('subscriber unsubscribes', async function(t) {
         )
         .toPromise()
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
-    await s.serverObservableCreated.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
+    await s.serverClientHandler.observableCreated.promise
     await sleep(200)
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 1, 'Subscription created')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        1,
+        'Subscription created'
+    )
     let result = await p
     t.deepEqual(result, [1, 2], 'shall emit correct values')
     t.equal(s.client._observers(), 0, 'No observers anymore')
     await sleep(500)
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions anymore'
+    )
     await teardown(t, s)
 })
 
 test('observable completes and subscriber unsubscribes at same time', async function(t) {
     let s = await setup(t)
-
     let obs = s.client.requestObservable('123')
     t.equal(s.client._observers(), 0, 'No observers yet')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     let p = obs
         .pipe(
             take(3),
@@ -174,19 +199,28 @@ test('observable completes and subscriber unsubscribes at same time', async func
         )
         .toPromise()
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
-    await s.serverObservableCreated.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
+    await s.serverClientHandler.observableCreated.promise
     await sleep(200)
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 1, 'Subscription created')
-
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        1,
+        'Subscription created'
+    )
     let result = await p
     t.deepEqual(result, [1, 2, 3], 'shall emit correct values')
-
     t.equal(s.client._observers(), 0, 'No observers anymore')
     await sleep(500)
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
-
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions anymore'
+    )
     await teardown(t, s)
 })
 
@@ -197,7 +231,11 @@ test('client closes connection', async function(t) {
     let s = await setup(t)
     let obs = s.client.requestObservable('infinite')
     t.equal(s.client._observers(), 0, 'No observers yet')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     obs.subscribe(
         _value => {
             s.client.close()
@@ -207,17 +245,24 @@ test('client closes connection', async function(t) {
         () => completed.resolve()
     )
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
-    await s.serverObservableCreated.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     await emitted.promise
     await completed.promise
     t.pass('observable completed')
 
     t.equal(s.client._observers(), 0, 'No observers anymore')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
-    await s.serverClientClosed.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions anymore'
+    )
+    await s.serverClientHandler.closed.promise
     t.pass('serverClient closed')
-    await s.closed.promise
+    await s.clientHandler.closed.promise
     t.pass('client closed')
 
     await closeServer(s.server)
@@ -231,28 +276,39 @@ test('server closes connection', async function(t) {
     let s = await setup(t)
     let obs = s.client.requestObservable('infinite')
     t.equal(s.client._observers(), 0, 'No observers yet')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     obs.subscribe(
         _value => {
-            s.serverClient.close()
+            s.serverClientHandler.client.close()
             emitted.resolve()
         },
         undefined,
         () => completed.resolve()
     )
     t.equal(s.client._observers(), 1, 'Observer created')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions yet')
-    await s.serverObservableCreated.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions yet'
+    )
     await emitted.promise
     await completed.promise
     t.pass('observable completed')
 
-    await s.serverClientClosed.promise
+    await s.serverClientHandler.closed.promise
     t.pass('serverClient closed')
 
     t.equal(s.client._observers(), 0, 'No observers anymore')
-    t.equal(s.serverClient._subscriptions(), 0, 'No subscriptions anymore')
-    await s.closed.promise
+    t.equal(
+        s.serverClientHandler.client._subscriptions(),
+        0,
+        'No subscriptions anymore'
+    )
+    await s.clientHandler.closed.promise
     t.pass('client closed')
 
     await closeServer(s.server)
