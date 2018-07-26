@@ -3,6 +3,7 @@ import * as tls from 'tls'
 import { EventEmitter } from 'events'
 import { exec } from 'child_process'
 import { RPCClient, RPCClientHandler } from './rpc-client'
+import * as uuidv4 from 'uuid/v4'
 
 export class RPCServer extends EventEmitter {
     private server: net.Server
@@ -29,6 +30,10 @@ export class RPCServer extends EventEmitter {
             token: string,
             cb: (accept: boolean) => void
         ) => void
+    ): this
+    on(
+        event: 'invalid_token',
+        listener: (ip: string, token: string) => void
     ): this
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
@@ -79,7 +84,7 @@ export class RPCServer extends EventEmitter {
         token?: string
     ): string {
         if (!token) {
-            token = 'xx'
+            token = uuidv4()
         }
 
         if (this.unusedTokens.has(token)) {
@@ -100,6 +105,7 @@ export class RPCServer extends EventEmitter {
         client.on('initialized', token => {
             let handler = this.unusedTokens.get(token)
             if (!handler) {
+                this.emit('invalid_token', socket.remoteAddress, token)
                 client._deny()
             } else {
                 client.setHandler(handler)

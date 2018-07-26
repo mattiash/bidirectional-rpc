@@ -11,10 +11,12 @@
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
     "dependencies": {
-        "rxjs": "^6.2.2"
+        "rxjs": "^6.2.2",
+        "uuid": "^3.3.2"
     },
     "devDependencies": {
         "@types/node": "^9.4.5",
+        "@types/uuid": "^3.4.3",
         "coveralls": "^3.0.0",
         "multi-tape": "^1.1.1",
         "nyc": "^11.4.1",

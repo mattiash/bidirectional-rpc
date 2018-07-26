@@ -112,6 +112,10 @@ export class RPCClient extends EventEmitter {
                 // Other end closed connection before we received anything
                 // This happens when the client rejects the fingerprint of the client
                 this.socket.end()
+            } else if (err.message === 'read ECONNRESET') {
+                // Other end closed connection. This happens when we send a deny-message
+                // to the other end.
+                this.socket.end()
             } else {
                 if (this.handler) {
                     this.handler.onError(err)
