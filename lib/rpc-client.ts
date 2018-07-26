@@ -3,7 +3,7 @@ import * as readline from 'readline'
 import { EventEmitter } from 'events'
 import * as assert from 'assert'
 import { Deferred } from './deferred'
-import { Observable, Observer, Subscription } from '../node_modules/rxjs'
+import { Observable, Observer, Subscription, throwError } from 'rxjs'
 
 type Question = {
     deferred: Deferred<any>
@@ -21,6 +21,7 @@ export class RPCClient extends EventEmitter {
     private rl: readline.ReadLine
     private msgId = 0
     private observableId = 0
+    private handler!: RPCClientHandler
 
     // The local observers in this node that shall get messages emitted
     // by an observable in the peer.
@@ -42,25 +43,35 @@ export class RPCClient extends EventEmitter {
      * @param fingerprint Only connect to the server
      *                    if it presents a certificate with this fingerprint
      */
-    constructor(port: number, ip: string, token: string, fingerprint?: string)
+    constructor(
+        handler: RPCClientHandler,
+        port: number,
+        ip: string,
+        token: string,
+        fingerprint?: string
+    )
     constructor(socket: tls.TLSSocket)
     constructor(
-        p1: tls.TLSSocket | number,
-        p2?: string,
+        p1: tls.TLSSocket | RPCClientHandler,
+        p2?: number,
         p3?: string,
-        p4?: string
+        p4?: string,
+        p5?: string
     ) {
         super()
         if (
-            typeof p1 === 'number' &&
-            typeof p2 === 'string' &&
-            typeof p3 === 'string'
+            typeof p1 === 'object' &&
+            p1 instanceof RPCClientHandler &&
+            typeof p2 === 'number' &&
+            typeof p3 === 'string' &&
+            typeof p4 === 'string'
         ) {
-            const token = p3
+            const token = p4
+            this.setHandler(p1)
             this.initialized = true
             this.socket = tls.connect({
-                host: p2,
-                port: p1,
+                host: p3,
+                port: p2,
                 rejectUnauthorized: false
             })
             this.socket.on('secureConnect', () => {
@@ -70,9 +81,8 @@ export class RPCClient extends EventEmitter {
                         this.fingerprint
                     ) {
                         this.socket.end()
-                        this.emit(
-                            'error',
-                            'Wrong certificate presented by server'
+                        this.handler.onError(
+                            new Error('Wrong certificate presented by server')
                         )
                         return
                     }
@@ -83,7 +93,7 @@ export class RPCClient extends EventEmitter {
             this.socket = p1 as tls.TLSSocket
         }
 
-        this.fingerprint = p4
+        this.fingerprint = p5
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
             this.subscriptions.forEach(subscription =>
@@ -92,13 +102,35 @@ export class RPCClient extends EventEmitter {
             this.subscriptions = new Map()
             this.observers.forEach(observer => observer.complete())
             this.observers = new Map()
-            this.emit('close', had_error)
+            if (this.handler) {
+                this.handler.onClose(had_error)
+            }
         })
+
+        this.socket.on('error', (err: Error) => {
+            if (err.message === 'socket hang up') {
+                // Other end closed connection before we received anything
+                // This happens when the client rejects the fingerprint of the client
+                this.socket.end()
+            } else {
+                if (this.handler) {
+                    this.handler.onError(err)
+                } else {
+                    throw err
+                }
+            }
+        })
+
         this.rl = readline.createInterface({
             input: this.socket,
             output: this.socket
         })
         this.rl.on('line', line => this.receive(line))
+    }
+
+    setHandler(handler: RPCClientHandler) {
+        this.handler = handler
+        handler.initialize(this)
     }
 
     /**
@@ -182,8 +214,8 @@ export class RPCClient extends EventEmitter {
         let deferred = new Deferred()
         let id = this.msgId++
         let timer = global.setTimeout(() => {
-            deferred.reject('timeout'), timeout
-        }, 2000)
+            deferred.reject('timeout')
+        }, timeout)
         this.outstandingQuestionMap.set(id, { deferred, timer })
         this.send('ask', message, id)
         return deferred.promise
@@ -239,6 +271,7 @@ export class RPCClient extends EventEmitter {
     _accept() {
         assert(!this.initialized)
         this.initialized = true
+        this.handler.onConnect()
         this.send('accepted')
     }
 
@@ -289,26 +322,24 @@ export class RPCClient extends EventEmitter {
         } else {
             switch (data.t) {
                 case 'accepted':
-                    this.emit('connect')
+                    this.handler.onConnect()
                     break
                 case 'denied':
-                    this.emit('error', 'connection not accepted')
+                    this.handler.onError(new Error('Connection not accepted'))
                     this.socket.end()
                     break
                 case 'msg':
-                    this.emit('message', data.d)
+                    this.handler.onMessage(data.d)
                     break
                 case 'ask':
-                    {
-                        let cbCalled = false
-                        this.emit('ask', data.d, (message: any) => {
-                            if (cbCalled) {
-                                throw new Error('Callback called twice for ask')
-                            }
-                            cbCalled = true
-                            this.respond(data.id, message)
+                    this.handler
+                        .onQuestion(data.d)
+                        .then(response => {
+                            this.respond(data.id, response)
                         })
-                    }
+                        .catch(() => {
+                            // TODO: Handle reject from onQuestion
+                        })
                     break
                 case 'resp':
                     let question = this.outstandingQuestionMap.get(data.id)
@@ -349,44 +380,27 @@ export class RPCClient extends EventEmitter {
                     {
                         // The peer wants to subscribe to an observable
                         let peerObservableId = data.id
-                        let cbCalled = false
-                        this.emit(
-                            'requestObservable',
-                            data.d,
-                            (obs: Observable<any>) => {
-                                if (cbCalled) {
-                                    throw new Error(
-                                        'Callback called twice for requestObservable'
+                        let obs = this.handler.onRequestObservable(data.d)
+                        if (!obs) {
+                            // TODO: Create an observable that only emits an error
+                            obs = throwError('Cannot create observable')
+                        }
+
+                        let subscription = obs.subscribe(
+                            value => this.send('obs', value, peerObservableId),
+                            undefined, // TODO: Handle errors
+                            () => {
+                                if (!this.closed) {
+                                    this.send(
+                                        'obsComplete',
+                                        undefined,
+                                        peerObservableId
                                     )
+                                    this.subscriptions.delete(peerObservableId)
                                 }
-                                cbCalled = true
-                                let subscription = obs.subscribe(
-                                    value =>
-                                        this.send(
-                                            'obs',
-                                            value,
-                                            peerObservableId
-                                        ),
-                                    undefined,
-                                    () => {
-                                        if (!this.closed) {
-                                            this.send(
-                                                'obsComplete',
-                                                undefined,
-                                                peerObservableId
-                                            )
-                                            this.subscriptions.delete(
-                                                peerObservableId
-                                            )
-                                        }
-                                    }
-                                )
-                                this.subscriptions.set(
-                                    peerObservableId,
-                                    subscription
-                                )
                             }
                         )
+                        this.subscriptions.set(peerObservableId, subscription)
                     }
                     break
 
@@ -411,6 +425,35 @@ export class RPCClient extends EventEmitter {
                     throw `Unexpected data ${data.t}`
             }
         }
+    }
+}
+
+export class RPCClientHandler {
+    constructor() {}
+    client: RPCClient
+
+    initialize(client: RPCClient) {
+        // TODO: Could there be a circular reference which
+        // leads to a leak here?
+        this.client = client
+        // this.onConnect()
+    }
+
+    onConnect() {}
+
+    onClose(_had_error: boolean) {}
+    onMessage(_message: any) {}
+
+    onQuestion(_question: any): Promise<any> {
+        return Promise.reject()
+    }
+
+    onRequestObservable(_params: any): Observable<any> | undefined {
+        return undefined
+    }
+
+    onError(err: Error) {
+        throw err
     }
 }
 

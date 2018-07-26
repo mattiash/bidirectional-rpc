@@ -1,3 +1,4 @@
+/*
 import 'source-map-support/register'
 import * as rpc from '../index'
 import * as fs from 'fs'
@@ -28,3 +29,4 @@ async function run() {
 }
 
 run()
+*/

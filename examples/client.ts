@@ -1,3 +1,4 @@
+/*
 import 'source-map-support/register'
 import * as rpc from '../index'
 
@@ -17,3 +18,4 @@ client.on('error', error => {
     console.log('error', error)
 })
 client.on('close', () => console.log('close'))
+*/

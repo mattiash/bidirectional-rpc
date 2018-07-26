@@ -3,6 +3,7 @@ import 'source-map-support/register'
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
+
 class Deferred {
     promise: Promise<void>
     resolve: () => void
@@ -23,6 +24,7 @@ async function listeningServer(): Promise<rpc.RPCServer> {
     )
     let listening = new Deferred()
     server.on('listening', listening.resolve)
+    server.on('error', err => console.log('Server error', err))
     server.listen(0, '127.0.0.1')
     await listening.promise
     return server
@@ -35,6 +37,25 @@ async function closeServer(server: rpc.RPCServer) {
     await close.promise
 }
 
+// TODO: Check that onConnect and onClose is called exactly once.
+class RPCTestHandler extends rpc.RPCClientHandler {
+    connected = new Deferred()
+    closed = new Deferred()
+    messages: any[] = []
+
+    onConnect() {
+        this.connected.resolve()
+    }
+
+    onMessage(message: any) {
+        this.messages.push(message)
+    }
+
+    onClose() {
+        this.closed.resolve()
+    }
+}
+
 test('create server', async function(t) {
     let server = await listeningServer()
     t.pass('listening')
@@ -44,161 +65,176 @@ test('create server', async function(t) {
 })
 
 test('send messages from client to server', async function(t) {
-    let clients = 0
-    let serverMessages: any[] = []
     let server = await listeningServer()
+    t.pass('Listening')
     let fingerprint = await server.fingerprint()
     t.ok(fingerprint, 'Server shall have a fingerprint')
-    t.pass('listening')
-    let serverClientClosed = new Deferred()
 
-    server.on('connection', (serverClient, token, cb) => {
-        t.equal(token, 'token1', 'shall pass token correctly')
-        cb(true)
-        serverClient.on('message', (message: any) =>
-            serverMessages.push(message)
-        )
-        serverClient.on('close', serverClientClosed.resolve)
-        clients++
-    })
+    let serverClientHandler = new RPCTestHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
     let address = server.address()
+
+    let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient(
+        clientHandler,
         address.port,
         address.address,
         'token1',
         fingerprint
     )
-    let connected = new Deferred()
-    let closed = new Deferred()
-    client.on('connect', connected.resolve)
-    client.on('close', closed.resolve)
-    await connected.promise
-    t.pass('client connected')
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
     client.sendMessage('test1')
     client.sendMessage('test2')
 
     client.close()
-    await serverClientClosed.promise
+    await serverClientHandler.closed.promise
     t.pass('serverClient closed')
-    await closed.promise
+    await clientHandler.closed.promise
     t.pass('client closed')
 
     await closeServer(server)
     t.pass('closed')
-    t.equal(clients, 1, 'One client connected')
-    t.equal(serverMessages.length, 2, 'Server received two messages')
-    t.equal(serverMessages[0], 'test1', 'Server received test message 1')
-    t.equal(serverMessages[1], 'test2', 'Server received test message 2')
+    t.equal(
+        serverClientHandler.messages.length,
+        2,
+        'Server received two messages'
+    )
+    t.equal(
+        serverClientHandler.messages[0],
+        'test1',
+        'Server received test message 1'
+    )
+    t.equal(
+        serverClientHandler.messages[1],
+        'test2',
+        'Server received test message 2'
+    )
 })
 
 test('send messages from server to client', async function(t) {
-    let clients = 0
-    let serverMessages: any[] = []
-    let clientMessages: any[] = []
     let server = await listeningServer()
-    t.pass('listening')
-    server.on('connection', (serverClient, token, cb) => {
-        t.equal(token, 'token2', 'shall pass token correctly')
-        cb(true)
-        serverClient.on('message', (message: any) => {
-            serverMessages.push(message)
-            serverClient.sendMessage(message + ' response')
-            if (message === 'close') {
-                serverClient.close()
-            }
-        })
-        clients++
-    })
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token2')
-    client.on('message', (message: any) => clientMessages.push(message))
-    let connected = new Deferred()
-    client.on('connect', connected.resolve)
-    let closed = new Deferred()
-    client.on('close', closed.resolve)
-    await connected.promise
-    t.pass('connected')
-    client.sendMessage('test1')
-    client.sendMessage('test2')
-    client.sendMessage('close')
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
+    serverClientHandler.client.sendMessage('test1')
+    serverClientHandler.client.sendMessage('test2')
 
     client.close()
-    await closed.promise
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
 
     await closeServer(server)
     t.pass('closed')
-    t.equal(clients, 1, 'One client connected')
-    t.equal(serverMessages.length, 3, 'Server received two messages')
-    t.equal(serverMessages[0], 'test1', 'Server received test message 1')
-    t.equal(serverMessages[1], 'test2', 'Server received test message 2')
-    t.equal(clientMessages.length, 3, 'Client received two messages')
+    t.equal(clientHandler.messages.length, 2, 'Client received two messages')
     t.equal(
-        clientMessages[0],
-        'test1 response',
-        'Client received test message 1 response'
+        clientHandler.messages[0],
+        'test1',
+        'Client received test message 1'
     )
     t.equal(
-        clientMessages[1],
-        'test2 response',
-        'Client received test message 2 response'
-    )
-    t.equal(
-        clientMessages[2],
-        'close response',
-        'Client received close response'
+        clientHandler.messages[1],
+        'test2',
+        'Client received test message 2'
     )
 })
 
 test('ask question and respond', async function(t) {
-    let clientMessages: any[] = []
     let server = await listeningServer()
-    t.pass('listening')
-    server.on('connection', (serverClient, _token, cb) => {
-        cb(true)
-        serverClient.on(
-            'ask',
-            (message: any, respond: (message: any) => void) => {
-                respond(message + ' response')
-            }
-        )
-    })
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    serverClientHandler.onQuestion = (question: any) =>
+        Promise.resolve(question + ' response')
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token3')
-    client.on('message', (message: any) => clientMessages.push(message))
-    let connected = new Deferred()
-    client.on('connect', connected.resolve)
-    let closed = new Deferred()
-    client.on('close', closed.resolve)
-    await connected.promise
-    t.pass('connected')
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
     let response = await client.ask('test1')
     t.equal(response, 'test1 response', 'shall receive response to question')
     client.close()
-    await closed.promise
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
 
     await closeServer(server)
     t.pass('closed')
 })
 
 test('slow responses shall not block other responses', async function(t) {
-    let clientMessages: any[] = []
     let server = await listeningServer()
-    t.pass('listening')
-    server.on('connection', (serverClient, _token, cb) => {
-        cb(true)
-        serverClient.on('ask', (message, respond) => {
-            setTimeout(() => respond(message.d + ' response'), message.t)
-        })
-    })
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    serverClientHandler.onQuestion = (question: any) => {
+        return new Promise(resolve =>
+            setTimeout(() => resolve(question.d + ' response'), question.t)
+        )
+    }
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token4')
-    client.on('message', (message: any) => clientMessages.push(message))
-    let connected = new Deferred()
-    client.on('connect', connected.resolve)
-    let closed = new Deferred()
-    client.on('close', closed.resolve)
-    await connected.promise
-    t.pass('connected')
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
     let receivedLast = ''
     let response1 = ''
     let response2 = ''
@@ -220,7 +256,10 @@ test('slow responses shall not block other responses', async function(t) {
         'slow responses shall not block fast responses'
     )
     client.close()
-    await closed.promise
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
 
     await closeServer(server)
     t.pass('closed')
@@ -228,24 +267,35 @@ test('slow responses shall not block other responses', async function(t) {
 })
 
 test('timeout response', async function(t) {
-    let clientMessages: any[] = []
     let server = await listeningServer()
-    t.pass('listening')
-    server.on('connection', (serverClient, _token, cb) => {
-        cb(true)
-        serverClient.on('ask', (message, respond) => {
-            setTimeout(() => respond(message.d + ' response'), message.t)
-        })
-    })
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    serverClientHandler.onQuestion = (question: any) => {
+        return new Promise(resolve =>
+            setTimeout(() => resolve(question.d + ' response'), question.t)
+        )
+    }
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
     let address = server.address()
-    let client = new rpc.RPCClient(address.port, address.address, 'token4')
-    client.on('message', (message: any) => clientMessages.push(message))
-    let connected = new Deferred()
-    client.on('connect', connected.resolve)
-    let closed = new Deferred()
-    client.on('close', closed.resolve)
-    await connected.promise
-    t.pass('connected')
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
     let receivedLast = ''
     let response1 = ''
     let response2 = ''
@@ -268,115 +318,118 @@ test('timeout response', async function(t) {
         'test1',
         'slow responses shall not block fast responses'
     )
-
     await sleep(3000)
     client.close()
-    await closed.promise
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
 
     await closeServer(server)
-    t.pass('server closed')
+    t.pass('closed')
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
 })
 
 test('client shall reject certificate with wrong fingerprint', async function(t) {
-    let serverMessages: any[] = []
+    let connectError = new Deferred()
+
     let server = await listeningServer()
+    t.pass('Listening')
     let fingerprint = await server.fingerprint()
     t.ok(fingerprint, 'Server shall have a fingerprint')
-    t.pass('listening')
-    server.on('connection', (serverClient, token, cb) => {
-        cb(true)
-        t.equal(token, 'token1', 'shall pass token correctly')
-        serverClient.on('message', (message: any) =>
-            serverMessages.push(message)
-        )
-    })
+
+    let serverClient1Handler = new RPCTestHandler()
+    server.registerClientHandler(serverClient1Handler, 3000, 'token1')
+
     let address = server.address()
+
+    let client1Handler = new RPCTestHandler()
+
     let client1 = new rpc.RPCClient(
+        client1Handler,
         address.port,
         address.address,
         'token1',
         fingerprint
     )
-    let connected1 = new Deferred()
-    let closed1 = new Deferred()
 
-    client1.on('connect', connected1.resolve)
-    client1.on('close', closed1.resolve)
-    await connected1.promise
-    t.pass('connected with correct fingerprint')
-    let client2 = new rpc.RPCClient(
-        address.port,
-        address.address,
-        'token1',
-        'bad'
-    )
+    await serverClient1Handler.connected.promise
+    t.pass('Server Client connected')
+    await client1Handler.connected.promise
+    t.pass('Client connected')
+
     client1.close()
-    await closed1.promise
+    await serverClient1Handler.closed.promise
+    t.pass('serverClient1 closed')
+    await client1Handler.closed.promise
+    t.pass('client1 closed')
 
-    let failed = new Deferred()
-    let closed2 = new Deferred()
-    client2.on('error', failed.resolve)
-    client2.on('close', closed2.resolve)
-    await failed.promise
-    await closed2.promise
+    let serverClient2Handler = new RPCTestHandler()
+    server.registerClientHandler(serverClient2Handler, 3000, 'token2')
 
-    t.pass('failed to connect with wrong fingerprint')
-
-    await closeServer(server)
-    t.pass('server closed')
-})
-
-test('server shall reject client with wrong token', async function(t) {
-    let serverMessages: any[] = []
-    let server = await listeningServer()
-    let fingerprint = await server.fingerprint()
-    t.ok(fingerprint, 'Server shall have a fingerprint')
-    t.pass('listening')
-    server.on(
-        'connection',
-        (serverClient, token, cb: (accept: boolean) => void) => {
-            cb(token === 'token1')
-            serverClient.on('message', (message: any) =>
-                serverMessages.push(message)
-            )
+    let client2Handler = new RPCTestHandler()
+    client2Handler.onError = (err: Error) => {
+        if (err.message.match(/Wrong certificate/)) {
+            connectError.resolve()
         }
-    )
-    let address = server.address()
-    let client1 = new rpc.RPCClient(
+    }
+    client2Handler.onConnect = () => t.fail('shall not connect')
+
+    new rpc.RPCClient(
+        client2Handler,
         address.port,
         address.address,
         'token2',
-        fingerprint
+        'wrong'
     )
-    let connected1 = new Deferred()
-    let closed1 = new Deferred()
-    let error = new Deferred()
 
-    client1.on('connect', connected1.resolve)
-    client1.on('close', closed1.resolve)
-    client1.on('error', error.resolve)
-    await error.promise
-    t.pass('connection refused with wrong token')
+    await connectError.promise
+    t.pass('client received connection error')
 
-    let client2 = new rpc.RPCClient(
-        address.port,
-        address.address,
-        'token1',
-        fingerprint
-    )
-    let connected2 = new Deferred()
-    let closed2 = new Deferred()
-
-    client2.on('connect', connected2.resolve)
-    client2.on('close', closed2.resolve)
-    await connected2.promise
-    t.pass('connection accepted with correct token')
-    client2.close()
+    await client2Handler.closed.promise
+    t.pass('client2 closed')
 
     await closeServer(server)
-    t.pass('server closed')
+    t.pass('closed')
 })
+
+test('server shall reject client with wrong token', async function(t) {
+    let connectError = new Deferred()
+
+    let server = await listeningServer()
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClient1Handler = new RPCTestHandler()
+    server.registerClientHandler(serverClient1Handler, 3000, 'token1')
+
+    let address = server.address()
+
+    let client1Handler = new RPCTestHandler()
+    client1Handler.onError = (err: Error) => {
+        if (err.message === 'Connection not accepted') {
+            connectError.resolve()
+        }
+    }
+
+    new rpc.RPCClient(
+        client1Handler,
+        address.port,
+        address.address,
+        'wrong',
+        fingerprint
+    )
+
+    await connectError.promise
+    t.pass('Client rejected')
+    await client1Handler.closed.promise
+    t.pass('client1 closed')
+
+    await closeServer(server)
+    t.pass('closed')
+})
+
 function sleep(ms: number): Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms))
 }
