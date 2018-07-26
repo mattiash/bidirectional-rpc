@@ -68,7 +68,6 @@ export class RPCClient extends EventEmitter {
         ) {
             const token = p4
             this.setHandler(p1)
-            this.initialized = true
             this.socket = tls.connect({
                 host: p3,
                 port: p2,
@@ -102,7 +101,7 @@ export class RPCClient extends EventEmitter {
             this.subscriptions = new Map()
             this.observers.forEach(observer => observer.complete())
             this.observers = new Map()
-            if (this.handler) {
+            if (this.handler && this.initialized) {
                 this.handler.onClose(had_error)
             }
         })
@@ -276,18 +275,21 @@ export class RPCClient extends EventEmitter {
     private receive(line: string) {
         let data = JSON.parse(line)
         if (!this.initialized) {
-            if (data.t === 'init') {
-                this.emit('initialized', data.d)
-            }
-        } else {
             switch (data.t) {
+                case 'init':
+                    this.emit('initialized', data.d)
+                    break
                 case 'accepted':
+                    this.initialized = true
                     this.handler.onConnect()
                     break
                 case 'denied':
                     this.handler.onError(new Error('Connection not accepted'))
                     this.socket.end()
                     break
+            }
+        } else {
+            switch (data.t) {
                 case 'msg':
                     this.handler.onMessage(data.d)
                     break

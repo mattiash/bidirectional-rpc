@@ -1,3 +1,4 @@
+import * as test from 'purple-tape'
 import { RPCClientHandler } from '../lib/rpc-client'
 
 export class Deferred {
@@ -17,8 +18,12 @@ export class RPCTestHandler extends RPCClientHandler {
     connected = new Deferred()
     closed = new Deferred()
     messages: any[] = []
+    connectCalls = 0
+    closeCalls = 0
+    errors = 0
 
     onConnect() {
+        this.connectCalls++
         this.connected.resolve()
     }
 
@@ -27,7 +32,18 @@ export class RPCTestHandler extends RPCClientHandler {
     }
 
     onClose() {
+        this.closeCalls++
         this.closed.resolve()
+    }
+
+    verifyConnected(t: test.Test) {
+        t.equal(this.connectCalls, 1, 'Shall call onConnect once')
+        t.equal(this.closeCalls, 1, 'Shall call onClose once')
+    }
+
+    verifyUnconnected(t: test.Test) {
+        t.equal(this.connectCalls, 0, 'Shall not call onConnect')
+        t.equal(this.closeCalls, 0, 'Shall not call onClose')
     }
 }
 

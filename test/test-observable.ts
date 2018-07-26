@@ -244,6 +244,8 @@ test('client closes connection', async function(t) {
 
     await closeServer(s.server)
     t.pass('closed')
+    s.serverClientHandler.verifyConnected(t)
+    s.clientHandler.verifyConnected(t)
 })
 
 test('server closes connection', async function(t) {
@@ -290,4 +292,6 @@ test('server closes connection', async function(t) {
 
     await closeServer(s.server)
     t.pass('closed')
+    s.serverClientHandler.verifyConnected(t)
+    s.clientHandler.verifyConnected(t)
 })

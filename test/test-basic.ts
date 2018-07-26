@@ -25,8 +25,6 @@ async function closeServer(server: rpc.RPCServer) {
     await close.promise
 }
 
-// TODO: Check that onConnect and onClose is called exactly once.
-
 test('create server', async function(t) {
     let server = await listeningServer()
     t.pass('listening')
@@ -86,6 +84,8 @@ test('send messages from client to server', async function(t) {
         'test2',
         'Server received test message 2'
     )
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('send messages from server to client', async function(t) {
@@ -135,6 +135,8 @@ test('send messages from server to client', async function(t) {
         'test2',
         'Client received test message 2'
     )
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('ask question and respond', async function(t) {
@@ -174,6 +176,8 @@ test('ask question and respond', async function(t) {
 
     await closeServer(server)
     t.pass('closed')
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('ask question and reject', async function(t) {
@@ -217,6 +221,8 @@ test('ask question and reject', async function(t) {
 
     await closeServer(server)
     t.pass('closed')
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('slow responses shall not block other responses', async function(t) {
@@ -278,6 +284,8 @@ test('slow responses shall not block other responses', async function(t) {
     await closeServer(server)
     t.pass('closed')
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('timeout response', async function(t) {
@@ -342,6 +350,8 @@ test('timeout response', async function(t) {
     await closeServer(server)
     t.pass('closed')
     t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })
 
 test('client shall reject certificate with wrong fingerprint', async function(t) {
@@ -400,11 +410,12 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
     await connectError.promise
     t.pass('client received connection error')
 
-    await client2Handler.closed.promise
-    t.pass('client2 closed')
-
     await closeServer(server)
     t.pass('closed')
+    serverClient1Handler.verifyConnected(t)
+    serverClient2Handler.verifyUnconnected(t)
+    client1Handler.verifyConnected(t)
+    client2Handler.verifyUnconnected(t)
 })
 
 test('server shall reject client with wrong token', async function(t) {
@@ -437,9 +448,9 @@ test('server shall reject client with wrong token', async function(t) {
 
     await connectError.promise
     t.pass('Client rejected')
-    await client1Handler.closed.promise
-    t.pass('client1 closed')
 
     await closeServer(server)
     t.pass('closed')
+    serverClient1Handler.verifyUnconnected(t)
+    client1Handler.verifyUnconnected(t)
 })
