@@ -13,41 +13,6 @@ This module implements an RPC mechanism that meets the following requirements:
 7.  Communication is protected against man-in-the-middle attacks if the client and server have a trust relationship established via some other mechanism.
 8.  The RPC mechanism exits with an error in both server and client if the communication fails.
 
-## Server Example
+# Examples
 
-```javascript
-let server = new RPCServer()
-server.listen(3000, '127.0.0.1')
-
-server.on('listening', () => {
-    let address = server.address()
-    console.log(`Listening on ${address.address}:${address.port}`)
-})
-
-server.on('connection', rpcClient => {
-    rpcClient.on('message', message =>
-        console.log(`Server received ${message}`)
-    )
-})
-```
-
-## Client example
-
-```javascript
-let client = new rpc.RPCClient(3000, '127.0.0.1')
-client.on('connect', () => client.sendMessage('test'))
-```
-
-## Observables via bidirectional RPC
-
-Request observable
-
-```javascript
-let observable = client.requestObservable(params)
-observable.subscribe(...)
-// Will emit an error if other end refuses the observable
-```
-
-```javascript
-client.on('requestObservable', (params, cb) => cb(from([1, 2, 3])))
-```
+See examples/.
