@@ -14,12 +14,14 @@ class ClientHandler extends rpc.RPCClientHandler {
     }
 }
 
+let token = process.argv[2] || undefined
+
 async function run() {
     const server = new rpc.RPCServer(key, cert)
     server.listen(12345, '127.0.0.1')
-    const TOKEN = server.registerClientHandler(new ClientHandler(), 10000)
-    console.log('Token:', TOKEN)
+    token = server.registerClientHandler(new ClientHandler(), 10000, token)
     console.log('Fingerprint:', await server.fingerprint())
+    console.log('Token:', token)
 }
 
 run()

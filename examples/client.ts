@@ -1,11 +1,11 @@
 import 'source-map-support/register'
 import * as rpc from '../index'
 
-let token = process.argv[2]
-let fingerprint = process.argv[3]
+let fingerprint = process.argv[2]
+let token = process.argv[3]
 
+console.log('Expected fingerprint', fingerprint)
 console.log('Token', token)
-console.log('Fingerprint', fingerprint)
 class ClientHandler extends rpc.RPCClientHandler {
     onConnect() {
         this.client.sendMessage({ test: 1 })
