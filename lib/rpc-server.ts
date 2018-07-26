@@ -73,11 +73,24 @@ export class RPCServer extends EventEmitter {
         this.server.close()
     }
 
-    // Add a token that shall be accepted. When a peer presents
-    // this token, it will be associated with the provided client.
-    // A token can only be used once. It expires after timeoutMs.
-    // If no token is provided, a random token is generated.
-    // The function returns the token.
+    /**
+     *
+     * Add a token that shall be accepted. When a peer presents
+     * this token, it will be associated with the provided RPCClientHandler.
+     * A token can only be used once. It expires after timeoutMs.
+     * If no token is provided, a random token is generated.
+     * The function returns the token.
+     *
+     * @param clientHandler An instance of RPCClientHandler that provides callbacks
+     *                      for this client
+     * @param timeoutMs     The time that the token is valid. A client must connect within
+     *                      this timeout, otherwise the token expires.
+     * @param token
+     *
+     * @returns The supplied token or the generated random token.
+     *
+     */
+
     registerClientHandler(
         clientHandler: RPCClientHandler,
         timeoutMs: number = 3000,

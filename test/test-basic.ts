@@ -193,7 +193,7 @@ test('ask question and respond', async function(t) {
     await clientHandler.connected.promise
     t.pass('Client connected')
 
-    let response = await client.ask('test1')
+    let response = await client.askQuestion('test1')
     t.equal(response, 'test1 response', 'shall receive response to question')
     client.close()
     await serverClientHandler.closed.promise
@@ -240,11 +240,11 @@ test('slow responses shall not block other responses', async function(t) {
     let response2 = ''
     await Promise.all([
         (async () => {
-            response1 = await client.ask({ d: 'test1', t: 1000 })
+            response1 = await client.askQuestion({ d: 'test1', t: 1000 })
             receivedLast = 'test1'
         })(),
         (async () => {
-            response2 = await client.ask({ d: 'test2', t: 0 })
+            response2 = await client.askQuestion({ d: 'test2', t: 0 })
             receivedLast = 'test2'
         })()
     ])
@@ -302,12 +302,12 @@ test('timeout response', async function(t) {
     await Promise.all([
         (async () => {
             response1 = await client
-                .ask({ d: 'test1', t: 3000 }, 200)
+                .askQuestion({ d: 'test1', t: 3000 }, 200)
                 .catch(() => 'timeout')
             receivedLast = 'test1'
         })(),
         (async () => {
-            response2 = await client.ask({ d: 'test2', t: 0 })
+            response2 = await client.askQuestion({ d: 'test2', t: 0 })
             receivedLast = 'test2'
         })()
     ])

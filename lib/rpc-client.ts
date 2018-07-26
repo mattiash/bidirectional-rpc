@@ -137,62 +137,8 @@ export class RPCClient extends EventEmitter {
         handler.initialize(this)
     }
 
-    /**
-     * Successfully connected to server
-     *
-     * @event connect
-     */
-    on(event: 'connect', listener: () => void): this
-
-    // Internal event used by RPCServer
+    // Internal event handled by RPCServer
     on(event: 'initialized', listener: (token: string) => void): this
-
-    /**
-     * Event emitted when the RPCClient is closed from either side
-     * of the connection or due to an error.
-     *
-     * @param had_error true if an error caused the RPCClient to be closed
-     */
-    on(event: 'close', listener: (had_error: boolean) => void): this
-
-    /**
-     * Error
-     *
-     * @param errorMessage
-     */
-    on(event: 'error', listener: (errorMessage: string) => void): this
-
-    /**
-     * A message received from the peer.
-     *
-     * @param message
-     */
-    on(event: 'message', listener: (message: any) => void): this
-
-    /**
-     * The peer asked a question and expects a response.
-     *
-     * @param message
-     * @param responder A function that shall be called with a response to send
-     *                  to the remote client
-     */
-    on(
-        event: 'ask',
-        listener: (message: any, responder: ResponderFunction) => void
-    ): this
-
-    /**
-     * The peer wants an observable
-     *
-     * @param message A description of the observable that the peer wants
-     * @param responder A function that shall be called with an observable
-     *                  that emits values to send to the peer.
-     */
-    on(
-        event: 'requestObservable',
-        listener: (message: any, responder: ObservableResponderFunction) => void
-    ): this
-
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
     }
@@ -211,17 +157,17 @@ export class RPCClient extends EventEmitter {
      * Returns a promise that resolves with the response or
      * rejects if no response is received within the timeout.
      *
-     * @param message
+     * @param question
      * @param timeout
      */
-    ask(message: any, timeout: number = 2000): Promise<any> {
+    askQuestion(question: any, timeout: number = 2000): Promise<any> {
         let deferred = new Deferred()
         let id = this.msgId++
         let timer = global.setTimeout(() => {
             deferred.reject('timeout')
         }, timeout)
         this.outstandingQuestionMap.set(id, { deferred, timer })
-        this.send('ask', message, id)
+        this.send('ask', question, id)
         return deferred.promise
     }
 
@@ -232,15 +178,15 @@ export class RPCClient extends EventEmitter {
      * no request has actually been sent to the peer. It will
      * be sent when someone subscribes to the observable.
      *
-     * @param message
+     * @param params
      */
-    requestObservable(message: any): Observable<any> {
-        message = clone(message)
+    requestObservable(params: any): Observable<any> {
+        params = clone(params)
 
         return new Observable<any>(observer => {
             let observableId = this.observableId++
             this.observers.set(observableId, observer)
-            this.send('subscribeObservable', message, observableId)
+            this.send('subscribeObservable', params, observableId)
             return () => {
                 if (!this.closed) {
                     // If the socket is closed, the observer will be deleted
@@ -440,18 +386,45 @@ export class RPCClientHandler {
         // TODO: Could there be a circular reference which
         // leads to a leak here?
         this.client = client
-        // this.onConnect()
     }
 
+    /**
+     * Called when successfully connected to a peer.
+     */
     onConnect() {}
 
+    /**
+     * Called when the connection to the peer ends.
+     *
+     * @param _had_error true if the connection was ended due to an error.
+     *
+     */
     onClose(_had_error: boolean) {}
+
+    /**
+     * Called when a message is received from the peer.
+     * @param _message
+     */
     onMessage(_message: any) {}
 
+    /**
+     * Called when a question is received from the peer. Must return
+     * a Promise that resolves with the answer or rejects.
+     *
+     * @param _question
+     */
     onQuestion(_question: any): Promise<any> {
         return Promise.reject()
     }
 
+    /**
+     * Called when the peer wants to to request an observable
+     * and subscribe to it.
+     *
+     * @param _params
+     * @returns an Observable or undefined if the Observable cannot be created.
+     *
+     */
     onRequestObservable(_params: any): Observable<any> | undefined {
         return undefined
     }
