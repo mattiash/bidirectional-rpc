@@ -359,7 +359,6 @@ export class RPCClient extends EventEmitter {
                         let peerObservableId = data.id
                         let obs = this.handler.onRequestObservable(data.d)
                         if (!obs) {
-                            // TODO: Create an observable that only emits an error
                             obs = throwError('Cannot create observable')
                         }
 

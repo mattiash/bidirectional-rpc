@@ -3,19 +3,7 @@ import 'source-map-support/register'
 import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
-
-class Deferred {
-    promise: Promise<void>
-    resolve: () => void
-    reject: (reason: any) => void
-
-    constructor() {
-        this.promise = new Promise((resolve, reject) => {
-            this.resolve = resolve
-            this.reject = reject
-        })
-    }
-}
+import { Deferred, sleep, RPCTestHandler } from './common'
 
 async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer(
@@ -38,23 +26,6 @@ async function closeServer(server: rpc.RPCServer) {
 }
 
 // TODO: Check that onConnect and onClose is called exactly once.
-class RPCTestHandler extends rpc.RPCClientHandler {
-    connected = new Deferred()
-    closed = new Deferred()
-    messages: any[] = []
-
-    onConnect() {
-        this.connected.resolve()
-    }
-
-    onMessage(message: any) {
-        this.messages.push(message)
-    }
-
-    onClose() {
-        this.closed.resolve()
-    }
-}
 
 test('create server', async function(t) {
     let server = await listeningServer()
@@ -472,7 +443,3 @@ test('server shall reject client with wrong token', async function(t) {
     await closeServer(server)
     t.pass('closed')
 })
-
-function sleep(ms: number): Promise<void> {
-    return new Promise<void>(resolve => setTimeout(resolve, ms))
-}
