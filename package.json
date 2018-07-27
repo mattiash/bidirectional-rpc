@@ -10,6 +10,13 @@
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mattiash/bidirectional-rpc.git"
+    },
+    "bugs": {
+        "url": "https://github.com/mattiash/bidirectional-rpc/issues"
+    },
     "dependencies": {
         "rxjs": "^6.2.2",
         "uuid": "^3.3.2"
