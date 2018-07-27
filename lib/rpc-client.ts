@@ -5,6 +5,8 @@ import * as assert from 'assert'
 import { Deferred } from './deferred'
 import { Observable, Observer, Subscription, throwError } from 'rxjs'
 
+const KEEPALIVE_DELAY = 10000
+
 type Question = {
     deferred: Deferred<any>
     timer: NodeJS.Timer
@@ -67,6 +69,7 @@ export class RPCClient extends EventEmitter {
             typeof p4 === 'string'
         ) {
             const token = p4
+            this.fingerprint = p5
             this.setHandler(p1)
             this.socket = tls.connect({
                 host: p3,
@@ -92,7 +95,8 @@ export class RPCClient extends EventEmitter {
             this.socket = p1 as tls.TLSSocket
         }
 
-        this.fingerprint = p5
+        this.socket.setKeepAlive(true, KEEPALIVE_DELAY)
+
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
             this.subscriptions.forEach(subscription =>

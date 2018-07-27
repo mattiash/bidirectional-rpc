@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+-   Enabled TCP Keepalive. It will tear down the TCP connection after 10s if
+    the TCP connection is brolen.
+
 ## [2.0.0] - 2018-07-26
 
 ### Added
