@@ -35,7 +35,7 @@ class RPCTestServerHandler extends RPCTestHandler {
         this.observableCreated.resolve()
         switch (params) {
             case '123':
-                return interval(100).pipe(
+                return interval(1000).pipe(
                     take(3),
                     map(n => n + 1)
                 )
@@ -141,7 +141,7 @@ test('subscriber unsubscribes', async function(t) {
         'No subscriptions yet'
     )
     await s.serverClientHandler.observableCreated.promise
-    await sleep(200)
+    await sleep(2000)
     t.equal(s.client._observers(), 1, 'Observer created')
     t.equal(
         s.serverClientHandler.client._subscriptions(),
