@@ -49,6 +49,14 @@ function connect(ip: string, port: number, fingerprint: string, token: string) {
         onClose(had_error: boolean) {
             console.log(`closed with${had_error ? '' : 'out'} error`)
         }
+
+        onQuestion() {
+            return Promise.reject()
+        }
+
+        onRequestObservable() {
+            return undefined
+        }
     }
 
     new rpc.RPCClient(new ClientHandler(), port, ip, token, fingerprint)

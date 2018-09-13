@@ -44,6 +44,10 @@ class RPCTestServerHandler extends RPCTestHandler {
         }
         return undefined
     }
+
+    onQuestion() {
+        return Promise.reject()
+    }
 }
 
 async function setup(t: test.Test) {

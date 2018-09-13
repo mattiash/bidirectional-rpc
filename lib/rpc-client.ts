@@ -405,7 +405,7 @@ export class RPCClient extends EventEmitter {
     }
 }
 
-export class RPCClientHandler {
+export abstract class RPCClientHandler {
     constructor() {}
     client: RPCClient = {} as RPCClient
 
@@ -430,7 +430,7 @@ export class RPCClientHandler {
      * Called when a message is received from the peer.
      * @param _message
      */
-    onMessage(_message: any) {}
+    abstract onMessage(_message: any): void
 
     /**
      * Called when a question is received from the peer. Must return
@@ -438,9 +438,7 @@ export class RPCClientHandler {
      *
      * @param _question
      */
-    onQuestion(_question: any): Promise<any> {
-        return Promise.reject()
-    }
+    abstract onQuestion(_question: any): Promise<any>
 
     /**
      * Called when the peer wants to to request an observable
@@ -450,9 +448,7 @@ export class RPCClientHandler {
      * @returns an Observable or undefined if the Observable cannot be created.
      *
      */
-    onRequestObservable(_params: any): Observable<any> | undefined {
-        return undefined
-    }
+    abstract onRequestObservable(_params: any): Observable<any> | undefined
 
     onError(err: Error) {
         throw err

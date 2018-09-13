@@ -29,6 +29,10 @@ class ClientHandler extends rpc.RPCClientHandler {
     onClose(had_error: boolean) {
         console.log(`closed with${had_error ? '' : 'out'} error`)
     }
+
+    onQuestion() {
+        return Promise.reject()
+    }
 }
 
 let fingerprint = ''

@@ -1,5 +1,6 @@
 import * as test from 'purple-tape'
 import { RPCClientHandler } from '../lib/rpc-client'
+import { Observable } from 'rxjs'
 
 export class Deferred {
     promise: Promise<void>
@@ -34,6 +35,14 @@ export class RPCTestHandler extends RPCClientHandler {
     onClose() {
         this.closeCalls++
         this.closed.resolve()
+    }
+
+    onQuestion(_question: any): Promise<any> {
+        return Promise.reject()
+    }
+
+    onRequestObservable(_params: any): Observable<number> | undefined {
+        return undefined
     }
 
     verifyConnected(t: test.Test) {
