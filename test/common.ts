@@ -3,8 +3,8 @@ import { RPCClientHandler } from '../lib/rpc-client'
 
 export class Deferred {
     promise: Promise<void>
-    resolve: () => void
-    reject: (reason: any) => void
+    resolve: () => void = () => null
+    reject: (reason: any) => void = () => null
 
     constructor() {
         this.promise = new Promise((resolve, reject) => {

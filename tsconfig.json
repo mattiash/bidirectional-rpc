@@ -1,16 +1,17 @@
 {
     "compilerOptions": {
-        "target": "ES6",
         "module": "commonjs",
-        "noImplicitAny": true,
+        "target": "ES2016",
+        "lib": ["es2016"],
+        "types": ["node"],
+        "strict": true,
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "inlineSourceMap": true,
         "strictNullChecks": true,
-        "moduleResolution": "node",
-        "preserveConstEnums": true,
-        "declaration": true
+        "skipLibCheck": true,
+        "inlineSourceMap": true,
+        "removeComments": true
     },
-    "include": ["*.ts", "examples/*.ts", "test/*.ts"]
+    "include": ["*.ts", "examples/*.ts", "test/*.ts", "lib/*.ts"]
 }

@@ -5,9 +5,7 @@ import * as assert from 'assert'
 import { Deferred } from './deferred'
 import { Observable, Observer, Subscription, throwError } from 'rxjs'
 
-const KEEPALIVE_DELAY = 10000
-
-type Question = {
+interface Question {
     deferred: Deferred<any>
     timer: NodeJS.Timer
 }
@@ -69,7 +67,6 @@ export class RPCClient extends EventEmitter {
             typeof p4 === 'string'
         ) {
             const token = p4
-            this.fingerprint = p5
             this.setHandler(p1)
             this.socket = tls.connect({
                 host: p3,
@@ -95,8 +92,7 @@ export class RPCClient extends EventEmitter {
             this.socket = p1 as tls.TLSSocket
         }
 
-        this.socket.setKeepAlive(true, KEEPALIVE_DELAY)
-
+        this.fingerprint = p5
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
             this.subscriptions.forEach(subscription =>
@@ -163,7 +159,7 @@ export class RPCClient extends EventEmitter {
      * @param question
      * @param timeout
      */
-    askQuestion(question: any, timeout: number = 2000): Promise<any> {
+    askQuestion(question: any, timeout = 2000): Promise<any> {
         let deferred = new Deferred()
         let id = this.msgId++
         let timer = global.setTimeout(() => {
@@ -290,7 +286,6 @@ export class RPCClient extends EventEmitter {
                 case 'denied':
                     this.handler.onError(new Error('Connection not accepted'))
                     this.socket.end()
-                    break
             }
         } else {
             switch (data.t) {
@@ -404,7 +399,7 @@ export class RPCClient extends EventEmitter {
                     break
 
                 default:
-                    throw `Unexpected data ${data.t}`
+                    throw new Error(`Unexpected data ${data.t}`)
             }
         }
     }
@@ -412,7 +407,7 @@ export class RPCClient extends EventEmitter {
 
 export class RPCClientHandler {
     constructor() {}
-    client: RPCClient
+    client: RPCClient = {} as RPCClient
 
     initialize(client: RPCClient) {
         this.client = client
