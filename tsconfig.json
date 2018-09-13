@@ -11,6 +11,7 @@
         "strictNullChecks": true,
         "skipLibCheck": true,
         "inlineSourceMap": true,
+        "declaration": true,
         "removeComments": true
     },
     "include": ["*.ts", "examples/*.ts", "test/*.ts", "lib/*.ts"]

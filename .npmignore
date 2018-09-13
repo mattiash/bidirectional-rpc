@@ -1,0 +1,3 @@
+*.tap
+coverage/
+.nyc_output
