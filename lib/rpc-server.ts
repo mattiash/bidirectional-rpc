@@ -60,8 +60,12 @@ export class RPCServer extends EventEmitter {
         })
     }
 
-    address(): net.AddressInfo {
-        return this.server.address() as net.AddressInfo
+    address() {
+        let address = this.server.address()
+        if (typeof address === 'string') {
+            throw new Error('Address cannot be a string...')
+        }
+        return address
     }
 
     listen(port: number, ip: string) {
