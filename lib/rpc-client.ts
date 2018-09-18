@@ -414,7 +414,7 @@ export class RPCClientHandler extends EventEmitter {
     constructor() {
         super()
     }
-    client: RPCClient
+    client: RPCClient = {} as RPCClient
 
     initialize(client: RPCClient) {
         this.client = client
