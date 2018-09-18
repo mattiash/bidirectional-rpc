@@ -1,0 +1,5 @@
+*.tap
+coverage/
+.nyc_output
+*.ts
+!*.d.ts

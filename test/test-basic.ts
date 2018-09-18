@@ -95,7 +95,7 @@ test('send messages from server to client', async function(t) {
     t.ok(fingerprint, 'Server shall have a fingerprint')
 
     let serverClientHandler = new RPCTestHandler()
-    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+    const token = server.registerClientHandler(serverClientHandler, 3000)
 
     let address = server.address()
 
@@ -104,7 +104,7 @@ test('send messages from server to client', async function(t) {
         clientHandler,
         address.port,
         address.address,
-        'token1',
+        token,
         fingerprint
     )
 
@@ -137,6 +137,25 @@ test('send messages from server to client', async function(t) {
     )
     serverClientHandler.verifyConnected(t)
     clientHandler.verifyConnected(t)
+})
+
+test("don't allow token reuse", async function(t) {
+    let server = await listeningServer()
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
+    try {
+        server.registerClientHandler(serverClientHandler, 3000, 'token1')
+        t.fail('shall not allow tokens to be used more than once')
+    } catch (e) {
+        t.ok('shall not allow tokens to be used more than once')
+    }
+
+    await closeServer(server)
+    t.pass('closed')
 })
 
 test('ask question and respond', async function(t) {

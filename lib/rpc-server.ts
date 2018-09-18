@@ -3,7 +3,7 @@ import * as tls from 'tls'
 import { EventEmitter } from 'events'
 import { exec } from 'child_process'
 import { RPCClient, RPCClientHandler } from './rpc-client'
-import * as uuidv4 from 'uuid/v4'
+import { v4 as uuidv4 } from 'uuid'
 
 export class RPCServer extends EventEmitter {
     private server: net.Server
@@ -20,8 +20,7 @@ export class RPCServer extends EventEmitter {
         })
     }
 
-    on(event: 'listening', listener: () => void): this
-    on(event: 'close', listener: () => void): this
+    on(event: 'listening' | 'close', listener: () => void): this
     on(event: 'error', listener: (error: Error) => void): this
     on(
         event: 'connection',
@@ -61,8 +60,12 @@ export class RPCServer extends EventEmitter {
         })
     }
 
-    address(): net.AddressInfo {
-        return this.server.address() as net.AddressInfo
+    address() {
+        let address = this.server.address()
+        if (typeof address === 'string') {
+            throw new Error('Address cannot be a string...')
+        }
+        return address
     }
 
     listen(port: number, ip: string) {
@@ -93,7 +96,7 @@ export class RPCServer extends EventEmitter {
 
     registerClientHandler(
         clientHandler: RPCClientHandler,
-        timeoutMs: number = 3000,
+        timeoutMs = 3000,
         token?: string
     ): string {
         if (!token) {
@@ -106,9 +109,10 @@ export class RPCServer extends EventEmitter {
 
         this.unusedTokens.set(token, clientHandler)
 
-        setTimeout(() => {
-            this.unusedTokens.delete(token!)
-        }, timeoutMs).unref()
+        setTimeout(
+            () => token && this.unusedTokens.delete(token),
+            timeoutMs
+        ).unref()
 
         return token
     }

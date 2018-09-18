@@ -5,9 +5,7 @@ import * as assert from 'assert'
 import { Deferred } from './deferred'
 import { Observable, Observer, Subscription, throwError } from 'rxjs'
 
-const KEEPALIVE_DELAY = 10000
-
-type Question = {
+interface Question {
     deferred: Deferred<any>
     timer: NodeJS.Timer
 }
@@ -69,7 +67,6 @@ export class RPCClient extends EventEmitter {
             typeof p4 === 'string'
         ) {
             const token = p4
-            this.fingerprint = p5
             this.setHandler(p1)
             this.socket = tls.connect({
                 host: p3,
@@ -95,8 +92,7 @@ export class RPCClient extends EventEmitter {
             this.socket = p1 as tls.TLSSocket
         }
 
-        this.socket.setKeepAlive(true, KEEPALIVE_DELAY)
-
+        this.fingerprint = p5
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
             this.subscriptions.forEach(subscription =>
@@ -163,7 +159,7 @@ export class RPCClient extends EventEmitter {
      * @param question
      * @param timeout
      */
-    askQuestion(question: any, timeout: number = 2000): Promise<any> {
+    askQuestion(question: any, timeout = 2000): Promise<any> {
         let deferred = new Deferred()
         let id = this.msgId++
         let timer = global.setTimeout(() => {
@@ -290,7 +286,6 @@ export class RPCClient extends EventEmitter {
                 case 'denied':
                     this.handler.onError(new Error('Connection not accepted'))
                     this.socket.end()
-                    break
             }
         } else {
             switch (data.t) {
@@ -404,13 +399,13 @@ export class RPCClient extends EventEmitter {
                     break
 
                 default:
-                    throw `Unexpected data ${data.t}`
+                    throw new Error(`Unexpected data ${data.t}`)
             }
         }
     }
 }
 
-export class RPCClientHandler extends EventEmitter {
+export abstract class RPCClientHandler extends EventEmitter {
     constructor() {
         super()
     }
@@ -437,7 +432,7 @@ export class RPCClientHandler extends EventEmitter {
      * Called when a message is received from the peer.
      * @param _message
      */
-    onMessage(_message: any) {}
+    abstract onMessage(_message: any): void
 
     /**
      * Called when a question is received from the peer. Must return
@@ -445,9 +440,7 @@ export class RPCClientHandler extends EventEmitter {
      *
      * @param _question
      */
-    onQuestion(_question: any): Promise<any> {
-        return Promise.reject()
-    }
+    abstract onQuestion(_question: any): Promise<any>
 
     /**
      * Called when the peer wants to to request an observable
@@ -457,9 +450,7 @@ export class RPCClientHandler extends EventEmitter {
      * @returns an Observable or undefined if the Observable cannot be created.
      *
      */
-    onRequestObservable(_params: any): Observable<any> | undefined {
-        return undefined
-    }
+    abstract onRequestObservable(_params: any): Observable<any> | undefined
 
     onError(err: Error) {
         throw err
