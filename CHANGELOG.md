@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.1] - 2018-09-19
+
+-   RPCClientHandler now extends EventEmitter to allow it to emit events.
+
 ## [3.0.0] - 2018-09-13
 
 -   Don't publish ts-files in npm-package to avoid conflicts
