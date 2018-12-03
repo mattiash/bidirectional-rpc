@@ -273,7 +273,13 @@ export class RPCClient extends EventEmitter {
     }
 
     private receive(line: string) {
-        let data = JSON.parse(line)
+        let data: any
+        try {
+            data = JSON.parse(line)
+        } catch (e) {
+            throw new Error(`Failed to parse '${line}' as JSON`)
+        }
+
         if (!this.initialized) {
             switch (data.t) {
                 case 'init':
