@@ -277,7 +277,9 @@ export class RPCClient extends EventEmitter {
         try {
             data = JSON.parse(line)
         } catch (e) {
-            throw new Error(`Failed to parse '${line}' as JSON`)
+            this.handler.onError(new Error(`Failed to parse '${line}' as JSON`))
+            this.socket.end()
+            return 
         }
 
         if (!this.initialized) {
