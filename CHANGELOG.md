@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.3] - 2018-12-05
+
+-   Call onError and close the socket if the client fails to parse JSON.
+
 ## [3.0.2] - 2018-12-03
 
 -   Include the bad JSON in the error when JSON parse fails.
