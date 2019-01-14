@@ -130,5 +130,9 @@ export class RPCServer extends EventEmitter {
                 client._accept()
             }
         })
+
+        client.on('error', err => {
+            this.emit('error', err)
+        })
     }
 }

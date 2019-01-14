@@ -137,7 +137,7 @@ export class RPCClient extends EventEmitter {
     }
 
     // Internal event handled by RPCServer
-    on(event: 'initialized', listener: (token: string) => void): this
+    on(event: 'initialized' | 'error', listener: (token: string) => void): this
     on(event: string, listener: (...args: any[]) => void) {
         return super.on(event, listener)
     }
@@ -277,9 +277,14 @@ export class RPCClient extends EventEmitter {
         try {
             data = JSON.parse(line)
         } catch (e) {
-            this.handler.onError(new Error(`Failed to parse '${line}' as JSON`))
+            const error = new Error(`Failed to parse '${line}' as JSON`)
+            if (this.handler) {
+                this.handler.onError(error)
+            } else {
+                this.emit('error', error)
+            }
             this.socket.end()
-            return 
+            return
         }
 
         if (!this.initialized) {
