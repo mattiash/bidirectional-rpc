@@ -1,3 +1,4 @@
+import * as net from 'net'
 import * as tls from 'tls'
 import * as readline from 'readline'
 import { EventEmitter } from 'events'
@@ -50,9 +51,9 @@ export class RPCClient extends EventEmitter {
         token: string,
         fingerprint?: string
     )
-    constructor(socket: tls.TLSSocket)
+    constructor(socket: tls.TLSSocket | net.Socket)
     constructor(
-        p1: tls.TLSSocket | RPCClientHandler,
+        p1: tls.TLSSocket | net.Socket | RPCClientHandler,
         p2?: number,
         p3?: string,
         p4?: string,
