@@ -4,6 +4,8 @@ This directory contains a simple example of a server and a client.
 The server opens up an http server listening on port 3000
 and an rpc-server listening on port 12345.
 
+## Normal server
+
 The client connects to a http-server via the url passed in as a parameter,
 and gets an ip-address, a port, a fingerprint and a token back.
 This information allows it to setup an authenticated rpc-session towards the
@@ -15,7 +17,7 @@ This allows the client to verify that it is talking to the correct server.
 The client should also present some sort of credentials to allow the
 server to authenticate the client.
 
-## Server output
+### Server output
 
     $ node server.js
     http server listening on http://localhost:3000
@@ -33,3 +35,18 @@ server to authenticate the client.
     Emitted 3
     Observable completed. Closing connection.
     closed without error
+
+## Fixed server
+
+The fixed-server example listens for plain (non-TLS) connections
+on a fixed and without any http-server, so it uses a fixed token.
+The client-fixed-server connects via TLS to a TLS proxy
+that forwards the requests to the server.
+
+The example can be run with stunnel:
+
+```
+stunnel example/stunnel.conf
+node example/fixed-server.js
+node example/client-fixed-server.js 12346
+```
