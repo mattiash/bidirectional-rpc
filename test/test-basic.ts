@@ -116,6 +116,10 @@ test('send messages from server to client', async function(t) {
     serverClientHandler.client.sendMessage('test1')
     serverClientHandler.client.sendMessage('test2')
 
+    while (clientHandler.messages.length < 2) {
+        await sleep(100)
+    }
+
     client.close()
     await serverClientHandler.closed.promise
     t.pass('serverClient closed')
