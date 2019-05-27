@@ -8,10 +8,17 @@ import { v4 as uuidv4 } from 'uuid'
 export class RPCServer extends EventEmitter {
     private server: net.Server
     private unusedTokens = new Map<string, RPCClientHandler>()
+    private defaultHandler: (
+        token: string
+    ) => RPCClientHandler | undefined = () => undefined
 
-    constructor(key: string, private cert: string) {
+    constructor(key?: string, private cert?: string) {
         super()
-        this.server = tls.createServer({ key, cert })
+        if (key && cert) {
+            this.server = tls.createServer({ key, cert })
+        } else {
+            this.server = net.createServer()
+        }
         this.server.on('listening', () => this.emit('listening'))
         this.server.on('close', () => this.emit('close'))
         this.server.on('error', err => this.emit('error', err))
@@ -39,25 +46,29 @@ export class RPCServer extends EventEmitter {
     }
 
     fingerprint(): Promise<string> {
-        return new Promise((resolve, reject) => {
-            let cp = exec(
-                'openssl x509 -noout -fingerprint',
-                (error, stdout) => {
-                    if (error) {
-                        reject(error)
-                    } else {
-                        let m = stdout.match(/Fingerprint=(\S+)/)
-                        if (!m) {
-                            reject(`No fingerprint in '${stdout}'`)
+        if (this.cert) {
+            return new Promise((resolve, reject) => {
+                let cp = exec(
+                    'openssl x509 -noout -fingerprint',
+                    (error, stdout) => {
+                        if (error) {
+                            reject(error)
                         } else {
-                            resolve(m[1])
+                            let m = stdout.match(/Fingerprint=(\S+)/)
+                            if (!m) {
+                                reject(`No fingerprint in '${stdout}'`)
+                            } else {
+                                resolve(m[1])
+                            }
                         }
                     }
-                }
-            )
-            cp.stdin.write(this.cert + '\n')
-            cp.stdin.end()
-        })
+                )
+                cp.stdin.write(this.cert + '\n')
+                cp.stdin.end()
+            })
+        } else {
+            throw new Error('No fingerprint when not using TLS')
+        }
     }
 
     address() {
@@ -117,10 +128,21 @@ export class RPCServer extends EventEmitter {
         return token
     }
 
+    /**
+     * Register a function that returns an RPCClientHandler for a specific token.
+     * This can be used instead of registerClientHandler,
+     * for example if a pre-shared secret is used as token.
+     */
+    registerDefaultHandler(
+        defaultHandler: (token: string) => RPCClientHandler | undefined
+    ) {
+        this.defaultHandler = defaultHandler
+    }
+
     private newClient(socket: tls.TLSSocket) {
         let client = new RPCClient(socket)
         client.on('initialized', token => {
-            let handler = this.unusedTokens.get(token)
+            let handler = this.unusedTokens.get(token) || this.defaultHandler(token)
             if (!handler) {
                 this.emit('invalid_token', socket.remoteAddress, token)
                 client._deny()

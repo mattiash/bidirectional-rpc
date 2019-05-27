@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+- Allow rpc-server to run over un-encrypted TCP. Useful if it is behind TLS terminator.
+- Allow pre-shared secrets as tokens.
+   
 ## [3.0.4] - 2019-01-14
 
 -   Handle json parsing errors before a session has been initialized.
