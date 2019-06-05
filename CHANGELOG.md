@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.2.0] - 2019-06-05
+
 - Added keep-alive function
   * Send a ping message 20 seconds after the latest message was sent to keep the tcp connection alive.
   * Close the connection if no message is received from the peer during 30 seconds.
