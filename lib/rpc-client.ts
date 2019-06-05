@@ -97,6 +97,7 @@ export class RPCClient extends EventEmitter {
                 port: p2,
                 rejectUnauthorized: false
             })
+            this.socket.setNoDelay(true)
             this.socket.on('secureConnect', () => {
                 if (this.fingerprint) {
                     if (
@@ -114,6 +115,7 @@ export class RPCClient extends EventEmitter {
             })
         } else {
             this.socket = p1 as tls.TLSSocket
+            this.socket.setNoDelay(true)
         }
 
         this.fingerprint = p5
