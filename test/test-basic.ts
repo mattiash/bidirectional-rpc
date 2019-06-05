@@ -4,6 +4,9 @@ import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { Deferred, sleep, RPCTestHandler } from './common'
+import { _SET_IDLE_TIMEOUT_DEFAULT } from '../lib/rpc-client'
+
+_SET_IDLE_TIMEOUT_DEFAULT(3000)
 
 async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer(
@@ -476,4 +479,57 @@ test('server shall reject client with wrong token', async function(t) {
     t.pass('closed')
     serverClient1Handler.verifyUnconnected(t)
     client1Handler.verifyUnconnected(t)
+})
+
+test('idle handling', async function(t) {
+    let server = await listeningServer()
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+
+    let serverClientHandler = new RPCTestHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
+    let address = server.address()
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
+    const clientReceive = (client as any).lastReceive
+    const serverReceive = (serverClientHandler.client as any).lastReceive
+    await sleep(4000)
+
+    t.ok(
+        (client as any).lastReceive > clientReceive,
+        'client shall have received ping'
+    )
+    t.ok(
+        (serverClientHandler.client as any).lastReceive > serverReceive,
+        'server shall have received ping'
+    )
+
+    clearTimeout((client as any).idleTimer)
+
+    t.pass('Waiting for timeout')
+
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
+
+    await closeServer(server)
+    t.pass('closed')
+
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
 })

@@ -6,6 +6,13 @@ import * as assert from 'assert'
 import { Deferred } from './deferred'
 import { Observable, Observer, Subscription, throwError } from 'rxjs'
 
+let IDLE_TIMEOUT_DEFAULT = 30_000
+const IDLE_TIMEOUT_FACTOR = 2 / 3
+
+/** For testing only */
+export function _SET_IDLE_TIMEOUT_DEFAULT(t: number) {
+    IDLE_TIMEOUT_DEFAULT = t
+}
 interface Question {
     deferred: Deferred<any>
     timer: NodeJS.Timer
@@ -23,6 +30,21 @@ export class RPCClient extends EventEmitter {
     private msgId = 0
     private observableId = 0
     private handler!: RPCClientHandler
+    // We must send something more often than this to keep
+    // our peer from timing out the connection.
+    // 0 means that we are not allowed to send ping and the peer
+    // does not accept it
+    private idleTimeout = IDLE_TIMEOUT_DEFAULT
+
+    // We shall timeout the connection if we hear nothing from our peer
+    // at least this often.
+    private peerIdleTimeout = 0
+
+    // When we last sent something to our peer
+    private lastTransmit = Date.now()
+
+    // When we last received something from our peer
+    private lastReceive = Date.now()
 
     // The local observers in this node that shall get messages emitted
     // by an observable in the peer.
@@ -34,7 +56,8 @@ export class RPCClient extends EventEmitter {
     private outstandingQuestionMap: Map<number, Question> = new Map()
     private initialized = false
     private fingerprint: string | undefined
-
+    private idleTimer?: NodeJS.Timer
+    private peerIdleTimer?: NodeJS.Timer
     /**
      * Create an RPCClient and initiate connection to a server.
      *
@@ -104,6 +127,12 @@ export class RPCClient extends EventEmitter {
             this.observers = new Map()
             if (this.handler && this.initialized) {
                 this.handler.onClose(had_error)
+            }
+            if (this.idleTimer) {
+                clearTimeout(this.idleTimer)
+            }
+            if (this.peerIdleTimer) {
+                clearTimeout(this.peerIdleTimer)
             }
         })
 
@@ -222,7 +251,9 @@ export class RPCClient extends EventEmitter {
         assert(!this.initialized)
         this.initialized = true
         this.handler.onConnect()
-        this.send('accepted')
+        this.send('accepted', undefined, undefined, {
+            idleTimeout: IDLE_TIMEOUT_DEFAULT
+        })
     }
 
     _deny() {
@@ -239,18 +270,27 @@ export class RPCClient extends EventEmitter {
         return this.subscriptions.size
     }
 
-    private send(type: string, data?: any, id?: number) {
+    private send(
+        type: string,
+        data?: any,
+        id?: number,
+        extra: { [key: string]: string | number } = {}
+    ) {
+        this.lastTransmit = Date.now()
         this.socket.write(
             JSON.stringify({
                 t: type,
                 d: data,
-                id // If id is undefined it is not represented in json
+                id, // If id is undefined it is not represented in json
+                ...extra
             }) + '\n'
         )
     }
 
     private sendInit(token: string) {
-        this.send('init', token)
+        this.send('init', token, undefined, {
+            idleTimeout: IDLE_TIMEOUT_DEFAULT
+        })
     }
 
     private respond(id: number, message: any) {
@@ -275,6 +315,7 @@ export class RPCClient extends EventEmitter {
 
     private receive(line: string) {
         let data: any
+        this.lastReceive = Date.now()
         try {
             data = JSON.parse(line)
         } catch (e) {
@@ -291,9 +332,24 @@ export class RPCClient extends EventEmitter {
         if (!this.initialized) {
             switch (data.t) {
                 case 'init':
+                    if (data.idleTimeout) {
+                        this.peerIdleTimeout = data.idleTimeout
+                        this.setIdleTimeout()
+                        this.setPeerIdleTimeout()
+                    } else {
+                        this.idleTimeout = 0
+                    }
+
                     this.emit('initialized', data.d)
                     break
                 case 'accepted':
+                    if (data.idleTimeout) {
+                        this.peerIdleTimeout = data.idleTimeout
+                        this.setIdleTimeout()
+                        this.setPeerIdleTimeout()
+                    } else {
+                        this.idleTimeout = 0
+                    }
                     this.initialized = true
                     this.handler.onConnect()
                     break
@@ -412,10 +468,51 @@ export class RPCClient extends EventEmitter {
                     }
                     break
 
+                case 'ping':
+                    break
+
                 default:
                     throw new Error(`Unexpected data ${data.t}`)
             }
         }
+    }
+
+    private setPeerIdleTimeout() {
+        if (this.peerIdleTimeout) {
+            this.peerIdleTimer = setTimeout(
+                () => this.checkPeerIdle(),
+                this.lastReceive + this.peerIdleTimeout - Date.now()
+            )
+        }
+    }
+
+    checkPeerIdle() {
+        if (Date.now() - this.lastReceive >= this.peerIdleTimeout) {
+            this.close()
+        } else {
+            this.setPeerIdleTimeout()
+        }
+    }
+
+    private setIdleTimeout() {
+        if (this.idleTimeout) {
+            this.idleTimer = setTimeout(
+                () => this.avoidIdle(),
+                this.lastTransmit +
+                    this.idleTimeout * IDLE_TIMEOUT_FACTOR -
+                    Date.now()
+            )
+        }
+    }
+
+    private avoidIdle() {
+        if (
+            this.lastTransmit <
+            Date.now() - this.idleTimeout * IDLE_TIMEOUT_FACTOR
+        ) {
+            this.send('ping')
+        }
+        this.setIdleTimeout()
     }
 }
 

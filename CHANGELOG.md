@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+- Added keep-alive function
+  * Send a ping message 20 seconds after the latest message was sent to keep the tcp connection alive.
+  * Close the connection if no message is received from the peer during 30 seconds.
+  * The keep-alive function is only enabled if both peers run a version of bidirectional-rpc
+    with keep-alive support.
+ 
 ## [3.1.0] - 2019-05-28
 
 - Allow rpc-server to run over un-encrypted TCP. Useful if it is behind TLS terminator.
