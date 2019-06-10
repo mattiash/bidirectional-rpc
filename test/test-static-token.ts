@@ -9,11 +9,11 @@ async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer({
         tls: true,
         cert: readFileSync('./test/server-cert.pem').toString(),
-        key: readFileSync('./test/server-key.pem').toString()
+        key: readFileSync('./test/server-key.pem').toString(),
     })
     let listening = new Deferred()
     server.on('listening', listening.resolve)
-    server.on('error', err => console.log('Server error', err))
+    server.on('error', (err) => console.log('Server error', err))
     server.listen(0, '127.0.0.1')
     await listening.promise
     return server
@@ -44,7 +44,7 @@ test('send messages from client to server', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await clientHandler.connected.promise

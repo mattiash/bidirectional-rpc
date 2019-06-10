@@ -13,11 +13,11 @@ async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer({
         tls: true,
         cert: readFileSync('./test/server-cert.pem').toString(),
-        key: readFileSync('./test/server-key.pem').toString()
+        key: readFileSync('./test/server-key.pem').toString(),
     })
     let listening = new Deferred()
     server.on('listening', listening.resolve)
-    server.on('error', err => console.log('Server error', err))
+    server.on('error', (err) => console.log('Server error', err))
     server.listen(0, '127.0.0.1')
     await listening.promise
     return server
@@ -38,10 +38,10 @@ class RPCTestServerHandler extends RPCTestHandler {
             case '123':
                 return interval(1000).pipe(
                     take(3),
-                    map(n => n + 1)
+                    map((n) => n + 1)
                 )
             case 'infinite':
-                return interval(100).pipe(map(n => n + 1))
+                return interval(100).pipe(map((n) => n + 1))
         }
         return undefined
     }
@@ -64,7 +64,7 @@ async function setup(t: test.Test) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await clientHandler.connected.promise
@@ -74,7 +74,7 @@ async function setup(t: test.Test) {
         client,
         clientHandler,
         server,
-        serverClientHandler
+        serverClientHandler,
     }
 }
 
@@ -220,7 +220,7 @@ test('client closes connection', async function(t) {
         'No subscriptions yet'
     )
     obs.subscribe(
-        _value => {
+        (_value) => {
             s.client.close()
             emitted.resolve()
         },
@@ -267,7 +267,7 @@ test('server closes connection', async function(t) {
         'No subscriptions yet'
     )
     obs.subscribe(
-        _value => {
+        (_value) => {
             s.serverClientHandler.client.close()
             emitted.resolve()
         },

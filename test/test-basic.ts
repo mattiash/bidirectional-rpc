@@ -12,11 +12,11 @@ async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer({
         tls: true,
         cert: readFileSync('./test/server-cert.pem').toString(),
-        key: readFileSync('./test/server-key.pem').toString()
+        key: readFileSync('./test/server-key.pem').toString(),
     })
     let listening = new Deferred()
     server.on('listening', listening.resolve)
-    server.on('error', err => console.log('Server error', err))
+    server.on('error', (err) => console.log('Server error', err))
     server.listen(0, '127.0.0.1')
     await listening.promise
     return server
@@ -55,7 +55,7 @@ test('send messages from client to server', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -111,7 +111,7 @@ test('send messages from server to client', async function(t) {
         host: address.address,
         token,
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -188,7 +188,7 @@ test('ask question and respond', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -230,7 +230,7 @@ test('ask question and reject', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -238,7 +238,7 @@ test('ask question and reject', async function(t) {
     await clientHandler.connected.promise
     t.pass('Client connected')
 
-    let response = await client.askQuestion('test1').catch(e => 'error ' + e)
+    let response = await client.askQuestion('test1').catch((e) => 'error ' + e)
     t.equal(
         response,
         'error test1 response',
@@ -264,7 +264,7 @@ test('slow responses shall not block other responses', async function(t) {
 
     let serverClientHandler = new RPCTestHandler()
     serverClientHandler.onQuestion = (question: any) => {
-        return new Promise(resolve =>
+        return new Promise((resolve) =>
             setTimeout(() => resolve(question.d + ' response'), question.t)
         )
     }
@@ -279,7 +279,7 @@ test('slow responses shall not block other responses', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -298,7 +298,7 @@ test('slow responses shall not block other responses', async function(t) {
         (async () => {
             response2 = await client.askQuestion({ d: 'test2', t: 0 })
             receivedLast = 'test2'
-        })()
+        })(),
     ])
     t.equal(response1, 'test1 response', 'shall receive response to question')
     t.equal(response2, 'test2 response', 'shall receive response to question')
@@ -328,7 +328,7 @@ test('timeout response', async function(t) {
 
     let serverClientHandler = new RPCTestHandler()
     serverClientHandler.onQuestion = (question: any) => {
-        return new Promise(resolve =>
+        return new Promise((resolve) =>
             setTimeout(() => resolve(question.d + ' response'), question.t)
         )
     }
@@ -343,7 +343,7 @@ test('timeout response', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -364,7 +364,7 @@ test('timeout response', async function(t) {
         (async () => {
             response2 = await client.askQuestion({ d: 'test2', t: 0 })
             receivedLast = 'test2'
-        })()
+        })(),
     ])
     t.equal(response1, 'timeout', 'shall receive timeout')
     t.equal(response2, 'test2 response', 'shall receive response to question')
@@ -408,7 +408,7 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClient1Handler.connected.promise
@@ -439,7 +439,7 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
         host: address.address,
         token: 'token2',
         fingerprint: 'wrong',
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await connectError.promise
@@ -477,7 +477,7 @@ test('client shall reject server with invalid certificate', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token2',
-        rejectUnauthorized: true
+        rejectUnauthorized: true,
     })
 
     await connectError.promise
@@ -515,7 +515,7 @@ test('server shall reject client with wrong token', async function(t) {
         host: address.address,
         token: 'wrong',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await connectError.promise
@@ -544,7 +544,7 @@ test('idle handling', async function(t) {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise
@@ -581,7 +581,7 @@ test('idle handling', async function(t) {
     clientHandler.verifyConnected(t)
 })
 
-test('client closes connection with outstanding questions', async t => {
+test('client closes connection with outstanding questions', async (t) => {
     let server = await listeningServer()
     t.pass('Listening')
     let fingerprint = await server.fingerprint()
@@ -589,7 +589,7 @@ test('client closes connection with outstanding questions', async t => {
 
     let serverClientHandler = new RPCTestHandler()
     serverClientHandler.onQuestion = (question: any) => {
-        return new Promise(resolve =>
+        return new Promise((resolve) =>
             setTimeout(() => resolve(question.d + ' response'), question.t)
         )
     }
@@ -604,7 +604,7 @@ test('client closes connection with outstanding questions', async t => {
         host: address.address,
         token: 'token1',
         fingerprint,
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
     })
 
     await serverClientHandler.connected.promise

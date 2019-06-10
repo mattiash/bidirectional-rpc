@@ -99,7 +99,7 @@ export class RPCClient extends EventEmitter {
             const socket = tls.connect({
                 host: p1.host,
                 port: p1.port,
-                rejectUnauthorized
+                rejectUnauthorized,
             })
             socket.setNoDelay(true)
             socket.on('secureConnect', () => {
@@ -122,13 +122,13 @@ export class RPCClient extends EventEmitter {
 
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
-            this.subscriptions.forEach(subscription =>
+            this.subscriptions.forEach((subscription) =>
                 subscription.unsubscribe()
             )
             this.subscriptions = new Map()
-            this.observers.forEach(observer => observer.complete())
+            this.observers.forEach((observer) => observer.complete())
             this.observers = new Map()
-            this.outstandingQuestionMap.forEach(q => {
+            this.outstandingQuestionMap.forEach((q) => {
                 q.deferred.reject(new Error('closed'))
             })
             this.outstandingQuestionMap = new Map()
@@ -164,9 +164,9 @@ export class RPCClient extends EventEmitter {
 
         this.rl = readline.createInterface({
             input: this.socket,
-            output: this.socket
+            output: this.socket,
         })
-        this.rl.on('line', line => this.receive(line))
+        this.rl.on('line', (line) => this.receive(line))
     }
 
     setHandler(handler: RPCClientHandler) {
@@ -220,7 +220,7 @@ export class RPCClient extends EventEmitter {
     requestObservable(params: any): Observable<any> {
         params = clone(params)
 
-        return new Observable<any>(observer => {
+        return new Observable<any>((observer) => {
             let observableId = this.observableId++
             this.observers.set(observableId, observer)
             this.send('subscribeObservable', params, observableId)
@@ -260,7 +260,7 @@ export class RPCClient extends EventEmitter {
         this.initialized = true
         this.handler.onConnect()
         this.send('accepted', undefined, undefined, {
-            idleTimeout: IDLE_TIMEOUT_DEFAULT
+            idleTimeout: IDLE_TIMEOUT_DEFAULT,
         })
     }
 
@@ -290,14 +290,14 @@ export class RPCClient extends EventEmitter {
                 t: type,
                 d: data,
                 id, // If id is undefined it is not represented in json
-                ...extra
+                ...extra,
             }) + '\n'
         )
     }
 
     private sendInit(token: string) {
         this.send('init', token, undefined, {
-            idleTimeout: IDLE_TIMEOUT_DEFAULT
+            idleTimeout: IDLE_TIMEOUT_DEFAULT,
         })
     }
 
@@ -307,7 +307,7 @@ export class RPCClient extends EventEmitter {
                 JSON.stringify({
                     t: 'resp',
                     id,
-                    d: message
+                    d: message,
                 }) + '\n'
             )
         }
@@ -319,7 +319,7 @@ export class RPCClient extends EventEmitter {
                 JSON.stringify({
                     t: 'respError',
                     id,
-                    d: message
+                    d: message,
                 }) + '\n'
             )
         }
@@ -377,10 +377,10 @@ export class RPCClient extends EventEmitter {
                 case 'ask':
                     this.handler
                         .onQuestion(data.d)
-                        .then(response => {
+                        .then((response) => {
                             this.respond(data.id, response)
                         })
-                        .catch(response => {
+                        .catch((response) => {
                             this.respondError(data.id, response)
                         })
                     break
@@ -446,7 +446,8 @@ export class RPCClient extends EventEmitter {
                         }
 
                         let subscription = obs.subscribe(
-                            value => this.send('obs', value, peerObservableId),
+                            (value) =>
+                                this.send('obs', value, peerObservableId),
                             undefined, // TODO: Handle errors
                             () => {
                                 if (!this.closed) {

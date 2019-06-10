@@ -4,10 +4,10 @@ import * as http from 'http'
 
 let url = process.argv[2]
 
-http.get(url, res => {
+http.get(url, (res) => {
     res.setEncoding('utf8')
     let rawData = ''
-    res.on('data', chunk => {
+    res.on('data', (chunk) => {
         rawData += chunk
     })
     res.on('end', () => {
@@ -38,7 +38,7 @@ function connect(
             this.client.sendMessage({ test: 1 })
             let obs = this.client.requestObservable('123')
             obs.subscribe(
-                value => console.log('Emitted ' + value),
+                (value) => console.log('Emitted ' + value),
                 undefined,
                 () => {
                     console.log('Observable completed. Closing connection.')
@@ -69,6 +69,6 @@ function connect(
         port,
         host,
         token,
-        fingerprint
+        fingerprint,
     })
 }

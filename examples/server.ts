@@ -15,7 +15,7 @@ class ClientHandler extends rpc.RPCClientHandler {
     onRequestObservable(params: string) {
         if (params === '123') {
             return interval(1000).pipe(
-                map(c => c + 1),
+                map((c) => c + 1),
                 take(3)
             )
         }
@@ -39,10 +39,10 @@ let fingerprint = ''
 const rpcServer = new rpc.RPCServer({
     tls: true,
     key,
-    cert
+    cert,
 })
 rpcServer.listen(PORT, IP)
-rpcServer.fingerprint().then(fp => (fingerprint = fp))
+rpcServer.fingerprint().then((fp) => (fingerprint = fp))
 
 const httpServer = http.createServer((_request, response) => {
     let token = rpcServer.registerClientHandler(new ClientHandler(), 10000)

@@ -62,7 +62,7 @@ export class RPCTestHandler extends RPCClientHandler {
 }
 
 export function sleep(ms: number) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         setTimeout(resolve, ms)
     })
 }

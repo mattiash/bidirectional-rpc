@@ -39,7 +39,7 @@ export class RPCServer extends EventEmitter {
             this.cert = options.cert
             this.server = tls.createServer({
                 key: options.key,
-                cert: options.cert
+                cert: options.cert,
             })
             this.server.on('secureConnection', (client: tls.TLSSocket) => {
                 this.newClient(client)
@@ -52,7 +52,7 @@ export class RPCServer extends EventEmitter {
         }
         this.server.on('listening', () => this.emit('listening'))
         this.server.on('close', () => this.emit('close'))
-        this.server.on('error', err => this.emit('error', err))
+        this.server.on('error', (err) => this.emit('error', err))
     }
 
     on(event: 'listening' | 'close', listener: () => void): this
@@ -169,7 +169,7 @@ export class RPCServer extends EventEmitter {
 
     private newClient(socket: tls.TLSSocket | net.Socket) {
         let client = new RPCClient(socket)
-        client.on('initialized', token => {
+        client.on('initialized', (token) => {
             let handler =
                 this.unusedTokens.get(token) || this.defaultHandler(token)
             if (!handler) {
@@ -182,7 +182,7 @@ export class RPCServer extends EventEmitter {
             }
         })
 
-        client.on('error', err => {
+        client.on('error', (err) => {
             this.emit('error', err)
         })
     }

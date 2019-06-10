@@ -15,7 +15,7 @@ function connect(host: string, port: number, token: string) {
             this.client.sendMessage({ test: 1 })
             let obs = this.client.requestObservable('123')
             obs.subscribe(
-                value => console.log('Emitted ' + value),
+                (value) => console.log('Emitted ' + value),
                 undefined,
                 () => {
                     console.log('Observable completed. Closing connection.')
@@ -45,6 +45,6 @@ function connect(host: string, port: number, token: string) {
         handler: new ClientHandler(),
         port,
         host,
-        token
+        token,
     })
 }
