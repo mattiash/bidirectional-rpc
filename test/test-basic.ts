@@ -48,13 +48,13 @@ test('send messages from client to server', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -103,13 +103,13 @@ test('send messages from server to client', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
         token,
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -179,13 +179,13 @@ test('ask question and respond', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -220,13 +220,13 @@ test('ask question and reject', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -268,13 +268,13 @@ test('slow responses shall not block other responses', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -331,13 +331,13 @@ test('timeout response', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -395,13 +395,13 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
 
     let client1Handler = new RPCTestHandler()
 
-    let client1 = new rpc.RPCClient(
-        client1Handler,
-        address.port,
-        address.address,
-        'token1',
+    let client1 = new rpc.RPCClient({
+        handler: client1Handler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClient1Handler.connected.promise
     t.pass('Server Client connected')
@@ -425,13 +425,13 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
     }
     client2Handler.onConnect = () => t.fail('shall not connect')
 
-    new rpc.RPCClient(
-        client2Handler,
-        address.port,
-        address.address,
-        'token2',
-        'wrong'
-    )
+    new rpc.RPCClient({
+        handler: client2Handler,
+        port: address.port,
+        host: address.address,
+        token: 'token2',
+        fingerprint: 'wrong'
+    })
 
     await connectError.promise
     t.pass('client received connection error')
@@ -464,13 +464,13 @@ test('server shall reject client with wrong token', async function(t) {
         }
     }
 
-    new rpc.RPCClient(
-        client1Handler,
-        address.port,
-        address.address,
-        'wrong',
+    new rpc.RPCClient({
+        handler: client1Handler,
+        port: address.port,
+        host: address.address,
+        token: 'wrong',
         fingerprint
-    )
+    })
 
     await connectError.promise
     t.pass('Client rejected')
@@ -492,13 +492,13 @@ test('idle handling', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')
@@ -551,13 +551,13 @@ test('client closes connection with outstanding questions', async t => {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await serverClientHandler.connected.promise
     t.pass('Server Client connected')

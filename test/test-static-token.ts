@@ -37,13 +37,13 @@ test('send messages from client to server', async function(t) {
     let address = server.address()
 
     let clientHandler = new RPCTestHandler()
-    let client = new rpc.RPCClient(
-        clientHandler,
-        address.port,
-        address.address,
-        'token1',
+    let client = new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token1',
         fingerprint
-    )
+    })
 
     await clientHandler.connected.promise
     t.pass('Client connected')

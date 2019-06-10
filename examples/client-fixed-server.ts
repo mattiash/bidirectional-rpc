@@ -8,7 +8,7 @@ connect(
     parseInt(port),
     'secret'
 )
-function connect(ip: string, port: number, token: string) {
+function connect(host: string, port: number, token: string) {
     console.log('Token', token)
     class ClientHandler extends rpc.RPCClientHandler {
         onConnect() {
@@ -41,5 +41,10 @@ function connect(ip: string, port: number, token: string) {
         }
     }
 
-    new rpc.RPCClient(new ClientHandler(), port, ip, token)
+    new rpc.RPCClient({
+        handler: new ClientHandler(),
+        port,
+        host,
+        token
+    })
 }

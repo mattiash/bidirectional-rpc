@@ -23,8 +23,26 @@ export type ObservableResponderFunction = (
     resp: Observable<any> | undefined
 ) => void
 
+/**
+ * 
+ * @param handler object that handles all requests/responses
+ * @param host IP address/hostname that the server is listening on
+ * @param port TCP port number that the server is listening on
+ * @param token Use this to authenticate to the server
+ * @param fingerprint Only connect to the server
+ *                    if it presents a certificate with this fingerprint
+
+ */
+interface RPCClientOptions {
+    handler: RPCClientHandler
+    host: string
+    port: number
+    token: string
+    fingerprint?: string
+}
+
 export class RPCClient extends EventEmitter {
-    private socket: tls.TLSSocket
+    private socket: tls.TLSSocket | net.Socket
     private closed = false
     private rl: readline.ReadLine
     private msgId = 0
@@ -61,50 +79,30 @@ export class RPCClient extends EventEmitter {
     /**
      * Create an RPCClient and initiate connection to a server.
      *
-     * @param port TCP port number that the server is listening on
-     * @param ip IP address that the server is listening on
-     * @param token Use this to authenticate to the server
-     * @param fingerprint Only connect to the server
-     *                    if it presents a certificate with this fingerprint
      */
-    constructor(
-        handler: RPCClientHandler,
-        port: number,
-        ip: string,
-        token: string,
-        fingerprint?: string
-    )
-    constructor(socket: tls.TLSSocket | net.Socket)
-    constructor(
-        p1: tls.TLSSocket | net.Socket | RPCClientHandler,
-        p2?: number,
-        p3?: string,
-        p4?: string,
-        p5?: string
-    ) {
+    constructor(p1: RPCClientOptions | tls.TLSSocket | net.Socket) {
         super()
-        if (
-            typeof p1 === 'object' &&
-            p1 instanceof RPCClientHandler &&
-            typeof p2 === 'number' &&
-            typeof p3 === 'string' &&
-            typeof p4 === 'string'
-        ) {
-            const token = p4
-            this.setHandler(p1)
-            this.socket = tls.connect({
-                host: p3,
-                port: p2,
+        if (p1 instanceof tls.TLSSocket || p1 instanceof net.Socket) {
+            this.socket = p1
+            this.socket.setNoDelay(true)
+        } else {
+            const token = p1.token
+            this.fingerprint = p1.fingerprint
+
+            this.setHandler(p1.handler)
+            const socket = tls.connect({
+                host: p1.host,
+                port: p1.port,
                 rejectUnauthorized: false
             })
-            this.socket.setNoDelay(true)
-            this.socket.on('secureConnect', () => {
+            socket.setNoDelay(true)
+            socket.on('secureConnect', () => {
                 if (this.fingerprint) {
                     if (
-                        this.socket.getPeerCertificate().fingerprint !==
+                        socket.getPeerCertificate().fingerprint !==
                         this.fingerprint
                     ) {
-                        this.socket.end()
+                        socket.end()
                         this.handler.onError(
                             new Error('Wrong certificate presented by server')
                         )
@@ -113,12 +111,9 @@ export class RPCClient extends EventEmitter {
                 }
                 this.sendInit(token)
             })
-        } else {
-            this.socket = p1 as tls.TLSSocket
-            this.socket.setNoDelay(true)
+            this.socket = socket
         }
 
-        this.fingerprint = p5
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
             this.subscriptions.forEach(subscription =>

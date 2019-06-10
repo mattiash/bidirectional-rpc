@@ -25,7 +25,12 @@ http.get(url, res => {
     })
 })
 
-function connect(ip: string, port: number, fingerprint: string, token: string) {
+function connect(
+    host: string,
+    port: number,
+    fingerprint: string,
+    token: string
+) {
     console.log('Fingerprint', fingerprint)
     console.log('Token', token)
     class ClientHandler extends rpc.RPCClientHandler {
@@ -59,5 +64,11 @@ function connect(ip: string, port: number, fingerprint: string, token: string) {
         }
     }
 
-    new rpc.RPCClient(new ClientHandler(), port, ip, token, fingerprint)
+    new rpc.RPCClient({
+        handler: new ClientHandler(),
+        port,
+        host,
+        token,
+        fingerprint
+    })
 }
