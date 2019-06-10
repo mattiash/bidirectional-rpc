@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [4.0.0] - 2019-06-10
+
+### Breaking changes
+
+- Constructors for RPCServer and RPCClient now take an object as parameter
+
+
+### Enhancements
+
+- Add rejectUnauthorized parameter to RPCServer
+- Reject all outstanding questions when socket is closed
+
 ## [3.2.0] - 2019-06-05
 
 - Added keep-alive function
