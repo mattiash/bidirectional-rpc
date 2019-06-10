@@ -9,10 +9,11 @@ import { _SET_IDLE_TIMEOUT_DEFAULT } from '../lib/rpc-client'
 _SET_IDLE_TIMEOUT_DEFAULT(3000)
 
 async function listeningServer(): Promise<rpc.RPCServer> {
-    let server = new rpc.RPCServer(
-        readFileSync('./test/server-key.pem').toString(),
-        readFileSync('./test/server-cert.pem').toString()
-    )
+    let server = new rpc.RPCServer({
+        tls: true,
+        cert: readFileSync('./test/server-cert.pem').toString(),
+        key: readFileSync('./test/server-key.pem').toString()
+    })
     let listening = new Deferred()
     server.on('listening', listening.resolve)
     server.on('error', err => console.log('Server error', err))

@@ -36,7 +36,11 @@ class ClientHandler extends rpc.RPCClientHandler {
 }
 
 let fingerprint = ''
-const rpcServer = new rpc.RPCServer(key, cert)
+const rpcServer = new rpc.RPCServer({
+    tls: true,
+    key,
+    cert
+})
 rpcServer.listen(PORT, IP)
 rpcServer.fingerprint().then(fp => (fingerprint = fp))
 

@@ -30,7 +30,7 @@ class ClientHandler extends rpc.RPCClientHandler {
     }
 }
 
-const rpcServer = new rpc.RPCServer()
+const rpcServer = new rpc.RPCServer({ tls: false })
 rpcServer.registerDefaultHandler(
     (token: string) => (token === 'secret' ? new ClientHandler() : undefined)
 )

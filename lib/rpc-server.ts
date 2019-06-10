@@ -5,8 +5,26 @@ import { exec } from 'child_process'
 import { RPCClient, RPCClientHandler } from './rpc-client'
 import { v4 as uuidv4 } from 'uuid'
 
+/**
+ * @param key Private keys in PEM format. See tls.createServer in nodejs
+ * @param cert  Cert chains in PEM format. See tls.createServer in nodejs.
+ */
+
+interface RPCServerOptionsSecure {
+    tls: true
+    key: tls.TlsOptions['key']
+    cert: tls.TlsOptions['cert']
+}
+
+interface RPCServerOptionsInsecure {
+    tls: false
+}
+
+type RPCServerOptions = RPCServerOptionsInsecure | RPCServerOptionsSecure
+
 export class RPCServer extends EventEmitter {
     private server: net.Server
+    private cert?: tls.TlsOptions['cert']
     private unusedTokens = new Map<string, RPCClientHandler>()
     private defaultHandler: (
         token: string
@@ -14,16 +32,15 @@ export class RPCServer extends EventEmitter {
 
     /**
      * Create a server
-     * @param key Private keys in PEM format. See tls.createServer in nodejs
-     * @param cert  Cert chains in PEM format. See tls.createServer in nodejs.
      */
-    constructor(
-        key?: tls.TlsOptions['key'],
-        private cert?: tls.TlsOptions['cert']
-    ) {
+    constructor(options: RPCServerOptions) {
         super()
-        if (key && cert) {
-            this.server = tls.createServer({ key, cert })
+        if (options.tls) {
+            this.cert = options.cert
+            this.server = tls.createServer({
+                key: options.key,
+                cert: options.cert
+            })
             this.server.on('secureConnection', (client: tls.TLSSocket) => {
                 this.newClient(client)
             })
