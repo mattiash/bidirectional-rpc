@@ -5,8 +5,8 @@
     "main": "index.js",
     "scripts": {
         "tsc": "tsc",
-        "test": "tsc && nyc multi-tape -o -p 4 build/test/test-*.js",
-        "test-travis": "tsc && nyc --reporter lcov multi-tape -o -p 4 build/test/test-*.js"
+        "test": "tsc && nyc --include build/lib multi-tape -o -p 4 build/test/test-*.js",
+        "test-travis": "tsc && nyc --include build/lib --reporter lcov multi-tape -o -p 4 build/test/test-*.js"
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
