@@ -12,7 +12,15 @@ export class RPCServer extends EventEmitter {
         token: string
     ) => RPCClientHandler | undefined = () => undefined
 
-    constructor(key?: string, private cert?: string) {
+    /**
+     * Create a server
+     * @param key Private keys in PEM format. See tls.createServer in nodejs
+     * @param cert  Cert chains in PEM format. See tls.createServer in nodejs.
+     */
+    constructor(
+        key?: tls.TlsOptions['key'],
+        private cert?: tls.TlsOptions['cert']
+    ) {
         super()
         if (key && cert) {
             this.server = tls.createServer({ key, cert })
