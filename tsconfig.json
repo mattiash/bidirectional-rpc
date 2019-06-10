@@ -12,7 +12,8 @@
         "skipLibCheck": true,
         "inlineSourceMap": true,
         "declaration": true,
-        "removeComments": true
+        "removeComments": true,
+        "outDir": "build/"
     },
     "include": ["*.ts", "examples/*.ts", "test/*.ts", "lib/*.ts"]
 }
