@@ -127,6 +127,11 @@ export class RPCClient extends EventEmitter {
             this.subscriptions = new Map()
             this.observers.forEach(observer => observer.complete())
             this.observers = new Map()
+            this.outstandingQuestionMap.forEach(q => {
+                q.deferred.reject(new Error('closed'))
+            })
+            this.outstandingQuestionMap = new Map()
+
             if (this.handler && this.initialized) {
                 this.handler.onClose(had_error)
             }
@@ -296,23 +301,27 @@ export class RPCClient extends EventEmitter {
     }
 
     private respond(id: number, message: any) {
-        this.socket.write(
-            JSON.stringify({
-                t: 'resp',
-                id,
-                d: message
-            }) + '\n'
-        )
+        if (!this.socket.destroyed) {
+            this.socket.write(
+                JSON.stringify({
+                    t: 'resp',
+                    id,
+                    d: message
+                }) + '\n'
+            )
+        }
     }
 
     private respondError(id: number, message: any) {
-        this.socket.write(
-            JSON.stringify({
-                t: 'respError',
-                id,
-                d: message
-            }) + '\n'
-        )
+        if (!this.socket.destroyed) {
+            this.socket.write(
+                JSON.stringify({
+                    t: 'respError',
+                    id,
+                    d: message
+                }) + '\n'
+            )
+        }
     }
 
     private receive(line: string) {

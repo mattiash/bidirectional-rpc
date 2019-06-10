@@ -533,3 +533,62 @@ test('idle handling', async function(t) {
     serverClientHandler.verifyConnected(t)
     clientHandler.verifyConnected(t)
 })
+
+test('client closes connection with outstanding questions', async t => {
+    let server = await listeningServer()
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let serverClientHandler = new RPCTestHandler()
+    serverClientHandler.onQuestion = (question: any) => {
+        return new Promise(resolve =>
+            setTimeout(() => resolve(question.d + ' response'), question.t)
+        )
+    }
+    server.registerClientHandler(serverClientHandler, 3000, 'token1')
+
+    let address = server.address()
+
+    let clientHandler = new RPCTestHandler()
+    let client = new rpc.RPCClient(
+        clientHandler,
+        address.port,
+        address.address,
+        'token1',
+        fingerprint
+    )
+
+    await serverClientHandler.connected.promise
+    t.pass('Server Client connected')
+    await clientHandler.connected.promise
+    t.pass('Client connected')
+
+    let askTime = Date.now()
+    let respTime: number = askTime + 5000
+
+    let p = client.askQuestion({ d: 'test1', t: 5000 }, 3000).catch(() => {
+        respTime = Date.now()
+        return 'threw'
+    })
+
+    client.close()
+
+    let response1 = await p
+    t.equal(response1, 'threw', 'shall throw an error')
+    t.ok(
+        respTime - askTime < 2000,
+        'shall throw an error on closing, not on timeout'
+    )
+
+    await serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await clientHandler.closed.promise
+    t.pass('client closed')
+
+    await closeServer(server)
+    t.pass('closed')
+    t.equal(client.outstandingQuestions(), 0, 'no outstanding questions')
+    serverClientHandler.verifyConnected(t)
+    clientHandler.verifyConnected(t)
+})
