@@ -2,7 +2,7 @@
     "name": "bidirectional-rpc",
     "version": "3.2.0",
     "description": "Bidirectional RPC over tcp/tls",
-    "main": "index.js",
+    "main": "build/index.js",
     "scripts": {
         "tsc": "tsc",
         "test": "tsc && nyc --include build/lib multi-tape -o -p 4 build/test/test-*.js",
