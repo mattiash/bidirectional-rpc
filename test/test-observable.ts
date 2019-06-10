@@ -63,7 +63,8 @@ async function setup(t: test.Test) {
         handler: clientHandler,
         port: address.port,
         host: address.address,
-        token: 'token1'
+        token: 'token1',
+        rejectUnauthorized: false
     })
 
     await clientHandler.connected.promise

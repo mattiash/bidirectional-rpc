@@ -45,6 +45,11 @@ export class RPCTestHandler extends RPCClientHandler {
         return undefined
     }
 
+    onError(err: Error) {
+        console.log(err.message)
+        this.errors++
+    }
+
     verifyConnected(t: test.Test) {
         t.equal(this.connectCalls, 1, 'Shall call onConnect once')
         t.equal(this.closeCalls, 1, 'Shall call onClose once')

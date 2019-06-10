@@ -54,7 +54,8 @@ test('send messages from client to server', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -109,7 +110,8 @@ test('send messages from server to client', async function(t) {
         port: address.port,
         host: address.address,
         token,
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -185,7 +187,8 @@ test('ask question and respond', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -226,7 +229,8 @@ test('ask question and reject', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -274,7 +278,8 @@ test('slow responses shall not block other responses', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -337,7 +342,8 @@ test('timeout response', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -401,7 +407,8 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClient1Handler.connected.promise
@@ -431,7 +438,8 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
         port: address.port,
         host: address.address,
         token: 'token2',
-        fingerprint: 'wrong'
+        fingerprint: 'wrong',
+        rejectUnauthorized: false
     })
 
     await connectError.promise
@@ -443,6 +451,42 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
     serverClient2Handler.verifyUnconnected(t)
     client1Handler.verifyConnected(t)
     client2Handler.verifyUnconnected(t)
+})
+
+test('client shall reject server with invalid certificate', async function(t) {
+    let connectError = new Deferred()
+
+    let server = await listeningServer()
+    t.pass('Listening')
+    let fingerprint = await server.fingerprint()
+    t.ok(fingerprint, 'Server shall have a fingerprint')
+
+    let address = server.address()
+
+    let serverClientHandler = new RPCTestHandler()
+    server.registerClientHandler(serverClientHandler, 3000, 'token2')
+
+    let clientHandler = new RPCTestHandler()
+    clientHandler.onError = (_err: Error) => {
+        connectError.resolve()
+    }
+    clientHandler.onConnect = () => t.fail('shall not connect')
+
+    new rpc.RPCClient({
+        handler: clientHandler,
+        port: address.port,
+        host: address.address,
+        token: 'token2',
+        rejectUnauthorized: true
+    })
+
+    await connectError.promise
+    t.pass('client received connection error')
+
+    await closeServer(server)
+    t.pass('closed')
+    serverClientHandler.verifyUnconnected(t)
+    clientHandler.verifyUnconnected(t)
 })
 
 test('server shall reject client with wrong token', async function(t) {
@@ -470,7 +514,8 @@ test('server shall reject client with wrong token', async function(t) {
         port: address.port,
         host: address.address,
         token: 'wrong',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await connectError.promise
@@ -498,7 +543,8 @@ test('idle handling', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise
@@ -557,7 +603,8 @@ test('client closes connection with outstanding questions', async t => {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await serverClientHandler.connected.promise

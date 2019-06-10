@@ -43,7 +43,8 @@ test('send messages from client to server', async function(t) {
         port: address.port,
         host: address.address,
         token: 'token1',
-        fingerprint
+        fingerprint,
+        rejectUnauthorized: false
     })
 
     await clientHandler.connected.promise

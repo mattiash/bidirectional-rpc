@@ -31,6 +31,7 @@ export type ObservableResponderFunction = (
  * @param token Use this to authenticate to the server
  * @param fingerprint Only connect to the server
  *                    if it presents a certificate with this fingerprint
+ * @param rejectUnauthorized  If not false, the server certificate is verified against the list of supplied CAs. See node's tls.connect method
 
  */
 interface RPCClientOptions {
@@ -39,6 +40,7 @@ interface RPCClientOptions {
     port: number
     token: string
     fingerprint?: string
+    rejectUnauthorized?: boolean
 }
 
 export class RPCClient extends EventEmitter {
@@ -88,12 +90,16 @@ export class RPCClient extends EventEmitter {
         } else {
             const token = p1.token
             this.fingerprint = p1.fingerprint
+            const rejectUnauthorized =
+                p1.rejectUnauthorized === undefined
+                    ? true
+                    : p1.rejectUnauthorized
 
             this.setHandler(p1.handler)
             const socket = tls.connect({
                 host: p1.host,
                 port: p1.port,
-                rejectUnauthorized: false
+                rejectUnauthorized
             })
             socket.setNoDelay(true)
             socket.on('secureConnect', () => {
