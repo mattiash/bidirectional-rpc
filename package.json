@@ -7,8 +7,8 @@
         "lint": "prettier -l *.ts lib/*.ts test/*.ts",
         "prepare": "tsc",
         "prepublishOnly": "npm run lint && npm run test",
-        "test": "tsc && nyc --exclude-after-remap false multi-tape -o -p 4 build/test/test-*.js",
-        "test-travis": "tsc && nyc --exclude-after-remap false --reporter=lcov multi-tape -o -p 4 build/test/test-*.js"
+        "test": "tsc && nyc --exclude-after-remap false --exclude build/test/ multi-tape -o -p 4 build/test/test-*.js",
+        "test-travis": "tsc && nyc --exclude-after-remap false --exclude build/test/ --reporter=lcov multi-tape -o -p 4 build/test/test-*.js"
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
