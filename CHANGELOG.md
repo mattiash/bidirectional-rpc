@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [4.0.2] - 2019-09-18
+
+-   PR #8: Do cleanup and destroy socket in close() (@jpttrssn)
+
 ## [4.0.1] - 2019-06-29
 
 Update dependencies and npm scripts.
@@ -15,28 +19,27 @@ Update dependencies and npm scripts.
 
 ### Breaking changes
 
-- Constructors for RPCServer and RPCClient now take an object as parameter
-
+-   Constructors for RPCServer and RPCClient now take an object as parameter
 
 ### Enhancements
 
-- Add rejectUnauthorized parameter to RPCServer
-- Reject all outstanding questions when socket is closed
+-   Add rejectUnauthorized parameter to RPCServer
+-   Reject all outstanding questions when socket is closed
 
 ## [3.2.0] - 2019-06-05
 
-- Added keep-alive function
-  * Send a ping message 20 seconds after the latest message was sent to keep the tcp connection alive.
-  * Close the connection if no message is received from the peer during 30 seconds.
-  * The keep-alive function is only enabled if both peers run a version of bidirectional-rpc
-    with keep-alive support.
- - Disable the Nagle algorithm to avoid delays when sending messages
+-   Added keep-alive function
+    -   Send a ping message 20 seconds after the latest message was sent to keep the tcp connection alive.
+    -   Close the connection if no message is received from the peer during 30 seconds.
+    -   The keep-alive function is only enabled if both peers run a version of bidirectional-rpc
+        with keep-alive support.
+-   Disable the Nagle algorithm to avoid delays when sending messages
 
 ## [3.1.0] - 2019-05-28
 
-- Allow rpc-server to run over un-encrypted TCP. Useful if it is behind TLS terminator.
-- Allow pre-shared secrets as tokens.
-   
+-   Allow rpc-server to run over un-encrypted TCP. Useful if it is behind TLS terminator.
+-   Allow pre-shared secrets as tokens.
+
 ## [3.0.4] - 2019-01-14
 
 -   Handle json parsing errors before a session has been initialized.
