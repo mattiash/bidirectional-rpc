@@ -122,25 +122,9 @@ export class RPCClient extends EventEmitter {
 
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
-            this.subscriptions.forEach((subscription) =>
-                subscription.unsubscribe()
-            )
-            this.subscriptions = new Map()
-            this.observers.forEach((observer) => observer.complete())
-            this.observers = new Map()
-            this.outstandingQuestionMap.forEach((q) => {
-                q.deferred.reject(new Error('closed'))
-            })
-            this.outstandingQuestionMap = new Map()
-
+            this.cleanup()
             if (this.handler && this.initialized) {
                 this.handler.onClose(had_error)
-            }
-            if (this.idleTimer) {
-                clearTimeout(this.idleTimer)
-            }
-            if (this.peerIdleTimer) {
-                clearTimeout(this.peerIdleTimer)
             }
         })
 
@@ -167,6 +151,24 @@ export class RPCClient extends EventEmitter {
             output: this.socket,
         })
         this.rl.on('line', (line) => this.receive(line))
+    }
+
+    cleanup() {
+        this.subscriptions.forEach((subscription) => subscription.unsubscribe())
+        this.subscriptions = new Map()
+        this.observers.forEach((observer) => observer.complete())
+        this.observers = new Map()
+        this.outstandingQuestionMap.forEach((q) => {
+            q.deferred.reject(new Error('closed'))
+        })
+        this.outstandingQuestionMap = new Map()
+
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer)
+        }
+        if (this.peerIdleTimer) {
+            clearTimeout(this.peerIdleTimer)
+        }
     }
 
     setHandler(handler: RPCClientHandler) {
@@ -248,11 +250,18 @@ export class RPCClient extends EventEmitter {
 
     /**
      * Close the session. A 'close' event will be emitted in both
-     * the local and the remote RPCClient.
+     * the local and the remote RPCClient. In case of socket timeout the socket
+     * may still be open so we destroy after a specified time.
      *
      */
     close() {
         this.socket.end()
+        this.cleanup()
+        setTimeout(() => {
+            if (!this.socket.destroyed) {
+                this.socket.destroy()
+            }
+        }, 10_000).unref()
     }
 
     _accept() {
