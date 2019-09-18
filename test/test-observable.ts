@@ -237,16 +237,17 @@ test('client closes connection', async function(t) {
     await completed.promise
     t.pass('observable completed')
 
+    await s.serverClientHandler.closed.promise
+    t.pass('serverClient closed')
+    await s.clientHandler.closed.promise
+    t.pass('client closed')
+
     t.equal(s.client._observers(), 0, 'No observers anymore')
     t.equal(
         s.serverClientHandler.client._subscriptions(),
         0,
         'No subscriptions anymore'
     )
-    await s.serverClientHandler.closed.promise
-    t.pass('serverClient closed')
-    await s.clientHandler.closed.promise
-    t.pass('client closed')
 
     await closeServer(s.server)
     t.pass('closed')

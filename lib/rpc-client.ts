@@ -122,25 +122,9 @@ export class RPCClient extends EventEmitter {
 
         this.socket.on('close', (had_error: boolean) => {
             this.closed = true
-            this.subscriptions.forEach((subscription) =>
-                subscription.unsubscribe()
-            )
-            this.subscriptions = new Map()
-            this.observers.forEach((observer) => observer.complete())
-            this.observers = new Map()
-            this.outstandingQuestionMap.forEach((q) => {
-                q.deferred.reject(new Error('closed'))
-            })
-            this.outstandingQuestionMap = new Map()
-
+            this.cleanup()
             if (this.handler && this.initialized) {
                 this.handler.onClose(had_error)
-            }
-            if (this.idleTimer) {
-                clearTimeout(this.idleTimer)
-            }
-            if (this.peerIdleTimer) {
-                clearTimeout(this.peerIdleTimer)
             }
         })
 
@@ -167,6 +151,24 @@ export class RPCClient extends EventEmitter {
             output: this.socket,
         })
         this.rl.on('line', (line) => this.receive(line))
+    }
+
+    cleanup() {
+        this.subscriptions.forEach((subscription) => subscription.unsubscribe())
+        this.subscriptions = new Map()
+        this.observers.forEach((observer) => observer.complete())
+        this.observers = new Map()
+        this.outstandingQuestionMap.forEach((q) => {
+            q.deferred.reject(new Error('closed'))
+        })
+        this.outstandingQuestionMap = new Map()
+
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer)
+        }
+        if (this.peerIdleTimer) {
+            clearTimeout(this.peerIdleTimer)
+        }
     }
 
     setHandler(handler: RPCClientHandler) {
@@ -253,9 +255,13 @@ export class RPCClient extends EventEmitter {
      *
      */
     close() {
-        this.closed = true
         this.socket.end()
-        setTimeout(() => this.socket.destroy(), 10_000).unref()
+        this.cleanup()
+        setTimeout(() => {
+            if (!this.socket.destroyed) {
+                this.socket.destroy()
+            }
+        }, 10_000).unref()
     }
 
     _accept() {
@@ -287,17 +293,15 @@ export class RPCClient extends EventEmitter {
         id?: number,
         extra: { [key: string]: string | number } = {}
     ) {
-        if (!this.socket.destroyed && !this.closed) {
-            this.lastTransmit = Date.now()
-            this.socket.write(
-                JSON.stringify({
-                    t: type,
-                    d: data,
-                    id, // If id is undefined it is not represented in json
-                    ...extra,
-                }) + '\n'
-            )
-        }
+        this.lastTransmit = Date.now()
+        this.socket.write(
+            JSON.stringify({
+                t: type,
+                d: data,
+                id, // If id is undefined it is not represented in json
+                ...extra,
+            }) + '\n'
+        )
     }
 
     private sendInit(token: string) {
