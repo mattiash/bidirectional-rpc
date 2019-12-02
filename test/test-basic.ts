@@ -68,9 +68,9 @@ test('send messages from client to server', async function(t) {
     client.sendMessage('test2')
 
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -120,17 +120,17 @@ test('send messages from server to client', async function(t) {
     await clientHandler.connected.promise
     t.pass('Client connected')
 
-    serverClientHandler.client.sendMessage('test1')
-    serverClientHandler.client.sendMessage('test2')
+    serverClientHandler.client?.sendMessage('test1')
+    serverClientHandler.client?.sendMessage('test2')
 
     while (clientHandler.messages.length < 2) {
         await sleep(100)
     }
 
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -200,9 +200,9 @@ test('ask question and respond', async function(t) {
     let response = await client.askQuestion('test1')
     t.equal(response, 'test1 response', 'shall receive response to question')
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -246,9 +246,9 @@ test('ask question and reject', async function(t) {
         'shall receive rejection to question'
     )
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -309,9 +309,9 @@ test('slow responses shall not block other responses', async function(t) {
         'slow responses shall not block fast responses'
     )
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -376,9 +376,9 @@ test('timeout response', async function(t) {
     )
     await sleep(3000)
     client.close()
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -418,9 +418,9 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
     t.pass('Client connected')
 
     client1.close()
-    await serverClient1Handler.closed.promise
+    await serverClient1Handler.closed
     t.pass('serverClient1 closed')
-    await client1Handler.closed.promise
+    await client1Handler.closed
     t.pass('client1 closed')
 
     let serverClient2Handler = new RPCTestHandler()
@@ -570,9 +570,9 @@ test('idle handling', async function(t) {
 
     t.pass('Waiting for timeout')
 
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)
@@ -630,9 +630,9 @@ test('client closes connection with outstanding questions', async (t) => {
         'shall throw an error on closing, not on timeout'
     )
 
-    await serverClientHandler.closed.promise
+    await serverClientHandler.closed
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)

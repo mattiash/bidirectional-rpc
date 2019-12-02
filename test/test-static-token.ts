@@ -56,7 +56,7 @@ test('send messages from client to server', async function(t) {
 
     client.close()
     t.pass('serverClient closed')
-    await clientHandler.closed.promise
+    await clientHandler.closed
     t.pass('client closed')
 
     await closeServer(server)

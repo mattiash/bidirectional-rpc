@@ -542,7 +542,15 @@ export abstract class RPCClientHandler extends EventEmitter {
     constructor() {
         super()
     }
-    client: RPCClient = {} as RPCClient
+    client: RPCClient | undefined
+
+    private closedDeferred = new Deferred<void>()
+
+    /**
+     * Resolves when the connection has been closed
+     * andonClose has been run.
+     */
+    closed = this.closedDeferred.promise
 
     initialize(client: RPCClient) {
         this.client = client
@@ -555,11 +563,15 @@ export abstract class RPCClientHandler extends EventEmitter {
 
     /**
      * Called when the connection to the peer ends.
+     * If you override this method, you must run
+     * super.onClose() last in the override.
      *
      * @param _had_error true if the connection was ended due to an error.
      *
      */
-    onClose(_had_error: boolean) {}
+    async onClose(_had_error: boolean) {
+        this.closedDeferred.resolve()
+    }
 
     /**
      * Called when a message is received from the peer.

@@ -35,14 +35,15 @@ function connect(
     console.log('Token', token)
     class ClientHandler extends rpc.RPCClientHandler {
         onConnect() {
-            this.client.sendMessage({ test: 1 })
-            let obs = this.client.requestObservable('123')
+            const client = this.client as rpc.RPCClient
+            client.sendMessage({ test: 1 })
+            let obs = client.requestObservable('123')
             obs.subscribe(
                 (value) => console.log('Emitted ' + value),
                 undefined,
                 () => {
                     console.log('Observable completed. Closing connection.')
-                    this.client.close()
+                    client.close()
                 }
             )
         }
@@ -51,8 +52,9 @@ function connect(
             console.log('Client received', data)
         }
 
-        onClose(had_error: boolean) {
+        async onClose(had_error: boolean) {
             console.log(`closed with${had_error ? '' : 'out'} error`)
+            await super.onClose(had_error)
         }
 
         onQuestion() {

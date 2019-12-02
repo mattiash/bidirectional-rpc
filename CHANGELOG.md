@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+-   Add a "closed" promise to clients
+    and make onClose an async function.
+
 ## [4.0.2] - 2019-09-18
 
 -   PR #8: Do cleanup and destroy socket in close() (@jpttrssn)

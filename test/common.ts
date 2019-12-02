@@ -17,7 +17,6 @@ export class Deferred {
 
 export class RPCTestHandler extends RPCClientHandler {
     connected = new Deferred()
-    closed = new Deferred()
     messages: any[] = []
     connectCalls = 0
     closeCalls = 0
@@ -32,9 +31,9 @@ export class RPCTestHandler extends RPCClientHandler {
         this.messages.push(message)
     }
 
-    onClose() {
+    async onClose(had_error: boolean) {
         this.closeCalls++
-        this.closed.resolve()
+        await super.onClose(had_error)
     }
 
     onQuestion(_question: any): Promise<any> {

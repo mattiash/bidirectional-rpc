@@ -24,10 +24,12 @@ class ClientHandler extends rpc.RPCClientHandler {
 
     onMessage(data: any) {
         console.log('Server received', data)
-        this.client.sendMessage({ test: 'back' })
+        this.client?.sendMessage({ test: 'back' })
     }
-    onClose(had_error: boolean) {
+
+    async onClose(had_error: boolean) {
         console.log(`closed with${had_error ? '' : 'out'} error`)
+        await super.onClose(had_error)
     }
 
     onQuestion() {
