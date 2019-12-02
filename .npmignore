@@ -9,3 +9,4 @@ build/test/
 build/examples/
 .prettierrc
 .travis.yml
+publish
