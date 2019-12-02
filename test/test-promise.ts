@@ -9,7 +9,7 @@ async function run() {
     )
 
     let c = 0
-    let obs = new Observable(observer => {
+    let obs = new Observable((observer) => {
         let me = c++
         observer.next('test ' + me)
         setTimeout(() => {
@@ -26,14 +26,7 @@ async function run() {
         }
     })
 
-    console.log(
-        await obs
-            .pipe(
-                take(1),
-                toArray()
-            )
-            .toPromise()
-    )
+    console.log(await obs.pipe(take(1), toArray()).toPromise())
 
     console.log(await obs.pipe(toArray()).toPromise())
 }
