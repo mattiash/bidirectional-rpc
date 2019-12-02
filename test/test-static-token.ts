@@ -4,6 +4,7 @@ import * as test from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { Deferred, RPCTestHandler } from './common'
+import { AddressInfo } from 'net'
 
 async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer({
@@ -35,7 +36,7 @@ test('send messages from client to server', async function(t) {
     let serverClientHandler = new RPCTestHandler()
     server.registerDefaultHandler(() => serverClientHandler)
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({

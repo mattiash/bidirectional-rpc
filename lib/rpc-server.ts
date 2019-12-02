@@ -91,8 +91,10 @@ export class RPCServer extends EventEmitter {
                         }
                     }
                 )
-                cp.stdin.write(this.cert + '\n')
-                cp.stdin.end()
+                if (cp.stdin) {
+                    cp.stdin.write(this.cert + '\n')
+                    cp.stdin.end()
+                }
             })
         } else {
             throw new Error('No fingerprint when not using TLS')

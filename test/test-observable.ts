@@ -8,6 +8,7 @@ import { toArray, take, map } from 'rxjs/operators'
 import { RPCClient } from '../lib/rpc-client'
 import { RPCServer } from '../lib/rpc-server'
 import { Deferred, sleep, RPCTestHandler } from './common'
+import { AddressInfo } from 'net'
 
 async function listeningServer(): Promise<rpc.RPCServer> {
     let server = new rpc.RPCServer({
@@ -56,7 +57,7 @@ async function setup(t: test.Test) {
 
     const serverClientHandler = new RPCTestServerHandler()
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -134,12 +135,7 @@ test('subscriber unsubscribes', async function(t) {
         0,
         'No subscriptions yet'
     )
-    let p = obs
-        .pipe(
-            take(2),
-            toArray()
-        )
-        .toPromise()
+    let p = obs.pipe(take(2), toArray()).toPromise()
     t.equal(s.client._observers(), 1, 'Observer created')
     t.equal(
         s.serverClientHandler.client._subscriptions(),
@@ -175,12 +171,7 @@ test('observable completes and subscriber unsubscribes at same time', async func
         0,
         'No subscriptions yet'
     )
-    let p = obs
-        .pipe(
-            take(3),
-            toArray()
-        )
-        .toPromise()
+    let p = obs.pipe(take(3), toArray()).toPromise()
     t.equal(s.client._observers(), 1, 'Observer created')
     t.equal(
         s.serverClientHandler.client._subscriptions(),

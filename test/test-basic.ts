@@ -5,6 +5,7 @@ import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { Deferred, sleep, RPCTestHandler } from './common'
 import { _SET_IDLE_TIMEOUT_DEFAULT } from '../lib/rpc-client'
+import { AddressInfo } from 'net'
 
 _SET_IDLE_TIMEOUT_DEFAULT(3000)
 
@@ -46,7 +47,7 @@ test('send messages from client to server', async function(t) {
     let serverClientHandler = new RPCTestHandler()
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -102,7 +103,7 @@ test('send messages from server to client', async function(t) {
     let serverClientHandler = new RPCTestHandler()
     const token = server.registerClientHandler(serverClientHandler, 3000)
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -179,7 +180,7 @@ test('ask question and respond', async function(t) {
         Promise.resolve(question + ' response')
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -221,7 +222,7 @@ test('ask question and reject', async function(t) {
         Promise.reject(question + ' response')
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -270,7 +271,7 @@ test('slow responses shall not block other responses', async function(t) {
     }
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -334,7 +335,7 @@ test('timeout response', async function(t) {
     }
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -398,7 +399,7 @@ test('client shall reject certificate with wrong fingerprint', async function(t)
     let serverClient1Handler = new RPCTestHandler()
     server.registerClientHandler(serverClient1Handler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let client1Handler = new RPCTestHandler()
 
@@ -461,7 +462,7 @@ test('client shall reject server with invalid certificate', async function(t) {
     let fingerprint = await server.fingerprint()
     t.ok(fingerprint, 'Server shall have a fingerprint')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let serverClientHandler = new RPCTestHandler()
     server.registerClientHandler(serverClientHandler, 3000, 'token2')
@@ -500,7 +501,7 @@ test('server shall reject client with wrong token', async function(t) {
     let serverClient1Handler = new RPCTestHandler()
     server.registerClientHandler(serverClient1Handler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let client1Handler = new RPCTestHandler()
     client1Handler.onError = (err: Error) => {
@@ -535,7 +536,7 @@ test('idle handling', async function(t) {
     let serverClientHandler = new RPCTestHandler()
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
@@ -595,7 +596,7 @@ test('client closes connection with outstanding questions', async (t) => {
     }
     server.registerClientHandler(serverClientHandler, 3000, 'token1')
 
-    let address = server.address()
+    let address = server.address() as AddressInfo
 
     let clientHandler = new RPCTestHandler()
     let client = new rpc.RPCClient({
