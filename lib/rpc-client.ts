@@ -548,7 +548,7 @@ export abstract class RPCClientHandler extends EventEmitter {
 
     /**
      * Resolves when the connection has been closed
-     * andonClose has been run.
+     * and onClose has been run.
      */
     closed = this.closedDeferred.promise
 

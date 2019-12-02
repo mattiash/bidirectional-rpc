@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [5.0.0] - 2019-12-02
+
 -   Add a "closed" promise to clients
     and make onClose an async function.
+
+-   RPCClientHandler.client is now undefined
+    before the handler has been initialized.
 
 ## [4.0.2] - 2019-09-18
 
