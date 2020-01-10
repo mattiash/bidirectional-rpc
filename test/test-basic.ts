@@ -1,6 +1,6 @@
 import 'source-map-support/register'
 
-import * as test from 'purple-tape'
+import { test } from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { Deferred, sleep, RPCTestHandler } from './common'
@@ -162,7 +162,7 @@ test("don't allow token reuse", async function(t) {
         server.registerClientHandler(serverClientHandler, 3000, 'token1')
         t.fail('shall not allow tokens to be used more than once')
     } catch (e) {
-        t.ok('shall not allow tokens to be used more than once')
+        t.pass('shall not allow tokens to be used more than once')
     }
 
     await closeServer(server)

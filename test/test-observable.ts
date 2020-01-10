@@ -1,6 +1,6 @@
 import 'source-map-support/register'
 
-import * as test from 'purple-tape'
+import { test, Test } from 'purple-tape'
 import * as rpc from '../index'
 import { readFileSync } from 'fs'
 import { interval } from 'rxjs'
@@ -52,7 +52,7 @@ class RPCTestServerHandler extends RPCTestHandler {
     }
 }
 
-async function setup(t: test.Test) {
+async function setup(t: Test) {
     let server = await listeningServer()
 
     const serverClientHandler = new RPCTestServerHandler()
@@ -80,7 +80,7 @@ async function setup(t: test.Test) {
 }
 
 async function teardown(
-    t: test.Test,
+    t: Test,
     s: {
         client: RPCClient
         server: RPCServer
