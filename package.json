@@ -28,7 +28,7 @@
         "multi-tape": "^1.4.0",
         "nyc": "^14.1.1",
         "prettier": "^1.19.1",
-        "purple-tape": "^3.06.3",
+        "purple-tape": "^3.6.3",
         "source-map-support": "^0.5.16",
         "typescript": "^3.7.2"
     }
