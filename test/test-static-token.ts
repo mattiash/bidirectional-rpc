@@ -76,6 +76,9 @@ test('send messages from client to server', async function(t) {
         'test2',
         'Server received test message 2'
     )
-    serverClientHandler.verifyConnected(t)
-    clientHandler.verifyConnected(t)
+
+    await t.tryUntil(() => {
+        serverClientHandler.verifyConnected(t)
+        clientHandler.verifyConnected(t)
+    }, 2000)
 })
