@@ -5,10 +5,8 @@
     "main": "build/index.js",
     "scripts": {
         "lint": "prettier -l *.ts lib/*.ts test/*.ts",
-        "prepare": "tsc",
-        "prepublishOnly": "npm run lint && npm run test",
-        "test": "tsc && nyc --exclude-after-remap false --exclude build/test/ multi-tape -o -p 4 build/test/test-*.js",
-        "test-travis": "tsc && nyc --exclude-after-remap false --exclude build/test/ --reporter=lcov multi-tape -o -p 4 build/test/test-*.js"
+        "build": "tsc",
+        "test": "tsc && nyc --exclude-after-remap false --exclude build/test/ --reporter=lcov multi-tape -o -p 4 -j build/test/test-*.js"
     },
     "author": "Mattias Holmlund <mattias@holmlund.se>",
     "license": "ISC",
@@ -27,10 +25,10 @@
         "@types/node": "^12.12.14",
         "@types/uuid": "^3.4.6",
         "coveralls": "^3.0.9",
-        "multi-tape": "^1.3.0",
+        "multi-tape": "^1.4.0",
         "nyc": "^14.1.1",
         "prettier": "^1.19.1",
-        "purple-tape": "^3.0.2",
+        "purple-tape": "^3.06.3",
         "source-map-support": "^0.5.16",
         "typescript": "^3.7.2"
     }
