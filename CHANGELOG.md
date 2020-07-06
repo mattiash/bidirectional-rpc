@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+-   Don't fire onConnect() before accepting connection.
+
 ## [5.0.0] - 2019-12-02
 
 -   Add a "closed" promise to clients

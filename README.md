@@ -1,6 +1,6 @@
 # Bidirectional RPC
 
-[![Build Status](https://travis-ci.org/mattiash/bidirectional-rpc.svg?branch=master)](https://travis-ci.org/mattiash/bidirectional-rpc) [![Coverage Status](https://coveralls.io/repos/github/mattiash/bidirectional-rpc/badge.svg?branch=master)](https://coveralls.io/github/mattiash/bidirectional-rpc?branch=master)
+![Build master](https://github.com/mattiash/bidirectional-rpc/workflows/Build%20master/badge.svg)
 
 This module implements an RPC mechanism that meets the following requirements:
 

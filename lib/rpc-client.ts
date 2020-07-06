@@ -267,10 +267,10 @@ export class RPCClient extends EventEmitter {
     _accept() {
         assert(!this.initialized)
         this.initialized = true
-        this.handler.onConnect()
         this.send('accepted', undefined, undefined, {
             idleTimeout: IDLE_TIMEOUT_DEFAULT,
         })
+        this.handler.onConnect()
     }
 
     _deny() {
